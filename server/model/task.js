@@ -1,4 +1,3 @@
-const bcrypt = require("bcrypt");
 const { DataTypes, Sequelize } = require("sequelize");
 const dotenv = require("dotenv");
 dotenv.config();
@@ -32,7 +31,6 @@ const User = sequelize.define("User", {
   },
 });
 
-
 const Schedule = sequelize.define("Schedule", {
   id: {
     type: DataTypes.UUID,
@@ -59,63 +57,20 @@ const Schedule = sequelize.define("Schedule", {
   },
   course: {
     type: DataTypes.STRING,
-    allowNull: true, 
+    allowNull: true,
+  },
+  userId: {
+    type: DataTypes.UUID,
+    field: "UserId",
   },
 });
 
 Schedule.associate = (models) => {
-  Schedule.belongsTo(models.User, { foreignKey: "userId" });
-
+  Schedule.belongsTo(User, { foreignKey: "userId" });
 };
 
-
-
-User.hasMany(Schedule);
-Schedule.hasOne(User);
-
-
-
-
+User.hasMany(Schedule, { foreignKey: "userId" });
+Schedule.belongsTo(User, { foreignKey: "userId", field: "UserId" });
 
 //
-
-
-
-
-User.signup = async function (email, password) {
-  // Check if the email already exists
-  const existingUser = await User.findOne({ where: { email } });
-  if (existingUser) {
-    throw new Error("Email already exists");
-  }
-
-  // Hash the password and create the user
-  const salt = await bcrypt.genSalt(10);
-  const hash = await bcrypt.hash(password, salt);
-
-  const newUser = await User.create({
-    email,
-    password: hash,
-  });
-
-  return newUser;
-};
-
-User.login = async function (email, password) {
-  // Find the user by email
-  const user = await User.findOne({ where: { email } });
-  if (!user) {
-    throw new Error("Incorrect email or password.");
-  }
-
-  // Compare the provided password with the stored hash
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) {
-    throw new Error("Incorrect email or password.");
-  }
-
-  // Return the user object without the password
-  return { id: user.id, email: user.email };
-};
-
 module.exports = { sequelize, User, Schedule };

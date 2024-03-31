@@ -30,7 +30,7 @@ const getScheduleById = async (req, res) => {
 
 const createSchedule = async (req, res) => {
   try {
-    const UserId = req.user.id;
+    const userId = req.user.id;
     const { start, end, title, description, course } = req.body;
     const schedule = await Schedule.create({
       start,
@@ -38,7 +38,7 @@ const createSchedule = async (req, res) => {
       title,
       description,
       course,
-      UserId,
+      userId,
     });
     res.status(201).json(schedule);
   } catch (error) {
@@ -123,96 +123,12 @@ const findAvailableTeacher = async (start, end, excludedTeacherId) => {
   return null;
 };
 
-//
-
-// const findAvailableTeacher = async (start, end) => {
-//   const teachers = await User.findAll();
-
-//   for (const teacher of teachers) {
-//     const conflictingSchedules = await Schedule.findAll({
-//       where: {
-//         userId: teacher.id,
-//         [Op.or]: [
-//           {
-//             start: {
-//               [Op.lt]: end,
-//               [Op.gt]: start,
-//             },
-//           },
-//           {
-//             end: {
-//               [Op.gt]: start,
-//               [Op.lt]: end,
-//             },
-//           },
-//           {
-//             [Op.and]: [
-//               { start: { [Op.lte]: start } },
-//               { end: { [Op.gte]: end } },
-//             ],
-//           },
-//         ],
-//       },
-//     });
-//     console.log('conflictingSchedules',conflictingSchedules);
-//     if (conflictingSchedules.length === 0) {
-//       return teacher;
-//     }
-//   }
-
-//   return null;
-// };
-//
-// const deleteSchedule = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const scheduleToDelete = await Schedule.findByPk(id);
-//     if (!scheduleToDelete) {
-//       return res.status(404).json({ message: "Schedule not found" });
-//     }
-
-//     const { start, end } = scheduleToDelete;
-
-//     // Find an available teacher before deleting the schedule
-//     const availableTeacher = await findAvailableTeacher(start, end);
-
-//     if (!availableTeacher) {
-//       return res.status(422).json({ message: "No available teacher found" });
-//     }
-
-//     // Start a transaction to ensure data consistency
-//     await sequelize.transaction(async (t) => {
-//       // Delete the schedule
-//       await scheduleToDelete.destroy({ transaction: t });
-
-//       // Create a new schedule for the available teacher
-//       const reassignedSchedule = await Schedule.create(
-//         {
-//           start,
-//           end,
-//           title: scheduleToDelete.title,
-//           description: scheduleToDelete.description,
-//           course: scheduleToDelete.course,
-//           UserId: availableTeacher.id,
-//         },
-//         { transaction: t }
-//       );
-
-//       // Respond with the reassigned schedule
-//       res.status(200).json({
-//         message: "Schedule reassigned",
-//         schedule: reassignedSchedule,
-//       });
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
 const deleteSchedule = async (req, res) => {
   try {
     const { id } = req.params;
     const scheduleToDelete = await Schedule.findByPk(id);
+
+    // Check if the schedule exists
     if (!scheduleToDelete) {
       return res.status(404).json({ message: "Schedule not found" });
     }
@@ -220,8 +136,13 @@ const deleteSchedule = async (req, res) => {
     const { start, end, userId: excludedTeacherId } = scheduleToDelete;
 
     // Find an available teacher before deleting the schedule
-    const availableTeacher = await findAvailableTeacher(start, end, excludedTeacherId);
-
+    const availableTeacher = await findAvailableTeacher(
+      start,
+      end,
+      excludedTeacherId
+    );
+    console.log("availableTeacher", availableTeacher);
+    // Check if an available teacher is found
     if (!availableTeacher) {
       return res.status(422).json({ message: "No available teacher found" });
     }
@@ -232,19 +153,22 @@ const deleteSchedule = async (req, res) => {
       await scheduleToDelete.destroy({ transaction: t });
 
       // Create a new schedule for the available teacher
-      const reassignedSchedule = await Schedule.create({
-        start,
-        end,
-        title: scheduleToDelete.title,
-        description: scheduleToDelete.description,
-        course: scheduleToDelete.course,
-        UserId: availableTeacher.id
-      }, { transaction: t });
+      const reassignedSchedule = await Schedule.create(
+        {
+          start,
+          end,
+          title: scheduleToDelete.title,
+          description: scheduleToDelete.description,
+          course: scheduleToDelete.course,
+          userId: availableTeacher.id,
+        },
+        { transaction: t }
+      );
 
       // Respond with the reassigned schedule
       res.status(200).json({
         message: "Schedule reassigned",
-        schedule: reassignedSchedule
+        schedule: reassignedSchedule,
       });
     });
   } catch (error) {
@@ -253,7 +177,9 @@ const deleteSchedule = async (req, res) => {
   }
 };
 
-
+module.exports = {
+  deleteSchedule,
+};
 
 module.exports = {
   getAllSchedules,

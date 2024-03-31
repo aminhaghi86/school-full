@@ -208,6 +208,7 @@ const Calendar = () => {
         {
           headers: {
             Authorization: `Bearer ${user.token}`,
+            cache: 'no-cache'
           },
         }
       );
@@ -259,6 +260,7 @@ const Calendar = () => {
       const response = await axios.get(`${process.env.REACT_APP_ENDPOINT}`, {
         headers: {
           Authorization: `Bearer ${user.token}`,
+          "Cache-Control": "no-cache"
         },
       });
       setEvents(response.data);

@@ -57,6 +57,10 @@ const Schedule = sequelize.define("Schedule", {
     allowNull: true,
     defaultValue: "",
   },
+  course: {
+    type: DataTypes.STRING,
+    allowNull: true, 
+  },
 });
 
 Schedule.associate = (models) => {
@@ -68,6 +72,16 @@ Schedule.associate = (models) => {
 
 User.hasMany(Schedule);
 Schedule.hasOne(User);
+
+
+
+
+
+//
+
+
+
+
 User.signup = async function (email, password) {
   // Check if the email already exists
   const existingUser = await User.findOne({ where: { email } });

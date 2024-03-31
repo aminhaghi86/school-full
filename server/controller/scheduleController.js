@@ -30,12 +30,13 @@ const getScheduleById = async (req, res) => {
 const createSchedule = async (req, res) => {
   try {
     const UserId = req.user.id;
-    const { start, end, title, description } = req.body;
+    const { start, end, title, description,course } = req.body;
     const schedule = await Schedule.create({
       start,
       end,
       title,
       description,
+      course,
       UserId,
     });
     res.status(201).json(schedule);
@@ -49,7 +50,7 @@ const createSchedule = async (req, res) => {
 const updateSchedule = async (req, res) => {
   try {
     const { id } = req.params;
-    const { start, end, title, description } = req.body;
+    const { start, end, title, description,course } = req.body;
 
     // Check if title is missing or null
     if (!title) {
@@ -65,6 +66,7 @@ const updateSchedule = async (req, res) => {
     schedule.end = end;
     schedule.title = title;
     schedule.description = description;
+    schedule.course = course;
 
     await schedule.save();
 

@@ -15,6 +15,7 @@ const Calendar = () => {
     end: null,
     title: "",
     description: "",
+    course: "",
   });
   const [events, setEvents] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -27,13 +28,54 @@ const Calendar = () => {
       start: selectInfo.startStr,
       end: selectInfo.endStr,
       title: selectInfo.title,
-      description: selectInfo.description ,
+      description: selectInfo.description,
+      course: "",
     });
     setShowModal(true);
   };
 
+  // const handleSaveEvent = async () => {
+  //   if (!user || !selectedEvent) {
+  //     return;
+  //   }
+
+  //   try {
+  //     const url = selectedEvent.id
+  //       ? `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`
+  //       : `${process.env.REACT_APP_ENDPOINT}`;
+
+  //     const method = selectedEvent.id ? "PUT" : "POST";
+
+  //     const response = await axios({
+  //       method,
+  //       url,
+  //       data: selectedEvent,
+  //       headers: {
+  //         Authorization: `Bearer ${user.token}`,
+  //       },
+  //     });
+
+  //     const updatedEventData = response.data;
+  //     if (selectedEvent.id) {
+  //       // Update existing event
+  //       setEvents(
+  //         events.map((event) =>
+  //           event.id === updatedEventData.id ? updatedEventData : event
+  //         )
+  //       );
+  //     } else {
+  //       // Create new event
+  //       setEvents([...events, updatedEventData]);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error saving event:", error);
+  //   }
+
+  //   setSelectedEvent(null);
+  //   setShowModal(false);
+  // };
   const handleSaveEvent = async () => {
-    if (!user || !selectedEvent) {
+    if (!user || !selectedEvent || !selectedEvent.course) {
       return;
     }
 
@@ -82,6 +124,7 @@ const Calendar = () => {
         end: clickedEvent.endStr,
         title: clickedEvent.title || "Untitled Event",
         description: clickedEvent.extendedProps.description || "",
+        course: clickedEvent.extendedProps.course || "",
       });
       setShowModal(true);
     } else {
@@ -95,11 +138,14 @@ const Calendar = () => {
     }
 
     try {
-      await axios.delete(`${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`, {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      });
+      await axios.delete(
+        `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
 
       setEvents(events.filter((event) => event.id !== selectedEvent.id));
     } catch (error) {
@@ -118,6 +164,7 @@ const Calendar = () => {
       end: endStr,
       title,
       description: extendedProps.description,
+      course: extendedProps.course || "HTML",
     };
 
     try {
@@ -152,6 +199,7 @@ const Calendar = () => {
       end: resizeInfo.event.endStr,
       title: resizeInfo.event.title,
       description: resizeInfo.event.description,
+      course: resizeInfo.event.course || "HTML",
     };
     try {
       const response = await axios.put(
@@ -280,7 +328,24 @@ const Calendar = () => {
             placeholder="Event Description"
             value={selectedEvent.description}
             onChange={(e) => handleInputChange(e, "description")}
+            style={{ resize: "none" }}
+            maxLength={100}
+            minLength={1}
           ></textarea>
+          <select
+            value={selectedEvent.course}
+            required
+            onChange={(e) => handleInputChange(e, "course")}
+          >
+            <option value="">Choose a course</option>
+            <option value="HTML">HTML</option>
+            <option value="CSS">CSS</option>
+            <option value="JAVASCRIPT">JavaScript</option>
+            <option value="REACT">React</option>
+            <option value="VUE">Vue</option>
+            <option value="ANGULAR">Angular</option>
+          </select>
+
           <button className="save-button" onClick={handleSaveEvent}>
             Save Event
           </button>

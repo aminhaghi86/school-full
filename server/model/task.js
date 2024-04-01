@@ -60,8 +60,8 @@ const Schedule = sequelize.define("Schedule", {
     allowNull: true,
   },
   status: {
-    type: DataTypes.ENUM('pending', 'accepted', 'denied'),
-    defaultValue: 'accepted',
+    type: DataTypes.ENUM("pending", "accepted", "denied"),
+    defaultValue: "accepted",
     allowNull: true,
   },
   userId: {
@@ -69,6 +69,36 @@ const Schedule = sequelize.define("Schedule", {
     field: "UserId",
   },
 });
+
+const Notification = sequelize.define("Notification", {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true,
+  },
+  message: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  // You can add more fields as needed, such as a 'read' flag to track whether the notification has been seen
+  read: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  // Foreign key to associate the notification with a user
+  userId: {
+    type: DataTypes.UUID,
+    allowNull: false,
+  },
+  // Foreign key to associate the notification with a schedule (optional)
+  scheduleId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+  },
+});
+
+Notification.belongsTo(User, { foreignKey: "userId" });
+User.hasMany(Notification, { foreignKey: "userId" });
 
 Schedule.associate = (models) => {
   Schedule.belongsTo(User, { foreignKey: "userId" });
@@ -78,4 +108,4 @@ User.hasMany(Schedule, { foreignKey: "userId" });
 Schedule.belongsTo(User, { foreignKey: "userId", field: "UserId" });
 
 //
-module.exports = { sequelize, User, Schedule };
+module.exports = { sequelize, User, Schedule,Notification };

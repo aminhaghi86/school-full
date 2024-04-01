@@ -6,7 +6,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import Modal from "./Modal";
 import axios from "axios";
 import { useAuthContext } from "../../hooks/useAuthContext";
-
+import "./index.css";
 const Calendar = () => {
   const { user } = useAuthContext();
   const [selectedEvent, setSelectedEvent] = useState({
@@ -223,7 +223,11 @@ const Calendar = () => {
           "Cache-Control": "no-cache",
         },
       });
-      setEvents(response.data);
+      const fetchedEvents = response.data.map((event) => ({
+        ...event,
+        className: `event-${event.status}`,
+      }));
+      setEvents(fetchedEvents);
     } catch (error) {
       console.log(error);
     }
@@ -235,30 +239,30 @@ const Calendar = () => {
     if (!user || !selectedEvent) {
       return;
     }
-
+  
     try {
-      await axios.put(
-        `${process.env.REACT_APP_ENDPOINT}/accept/${selectedEvent.id}`,
-        {},
+      await axios.post(
+        `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}/accept`,
+        { scheduleId: selectedEvent.id },
         {
           headers: {
             Authorization: `Bearer ${user.token}`,
           },
         }
       );
-
+  
       // Update the event status locally
       setEvents(
         events.map((event) =>
           event.id === selectedEvent.id
-            ? { ...event, status: "accepted" }
+            ? { ...event, status: "accepted", className: "event-accepted" }
             : event
         )
       );
     } catch (error) {
       console.error("Error accepting event:", error);
     }
-
+  
     setSelectedEvent(null);
     setShowModal(false);
   };
@@ -269,9 +273,9 @@ const Calendar = () => {
     }
 
     try {
-      await axios.put(
-        `${process.env.REACT_APP_ENDPOINT}/deny/${selectedEvent.id}`,
-        {},
+      const response =await axios.post(
+        `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}/deny`,
+        { scheduleId: selectedEvent.id },
         {
           headers: {
             Authorization: `Bearer ${user.token}`,
@@ -279,12 +283,15 @@ const Calendar = () => {
         }
       );
 
+      if (response.status === 200) {
       // Update the event status locally
       setEvents(
         events.map((event) =>
-          event.id === selectedEvent.id ? { ...event, status: "denied" } : event
+          event.id === selectedEvent.id
+            ? { ...event, status: "denied", className: "event-denied" }
+            : event
         )
-      );
+      );}
     } catch (error) {
       console.error("Error denying event:", error);
     }

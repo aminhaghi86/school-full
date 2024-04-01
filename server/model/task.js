@@ -59,6 +59,11 @@ const Schedule = sequelize.define("Schedule", {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  status: {
+    type: DataTypes.ENUM('pending', 'accepted', 'denied'),
+    defaultValue: 'accepted',
+    allowNull: true,
+  },
   userId: {
     type: DataTypes.UUID,
     field: "UserId",

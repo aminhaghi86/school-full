@@ -34,46 +34,6 @@ const Calendar = () => {
     setShowModal(true);
   };
 
-  // const handleSaveEvent = async () => {
-  //   if (!user || !selectedEvent) {
-  //     return;
-  //   }
-
-  //   try {
-  //     const url = selectedEvent.id
-  //       ? `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`
-  //       : `${process.env.REACT_APP_ENDPOINT}`;
-
-  //     const method = selectedEvent.id ? "PUT" : "POST";
-
-  //     const response = await axios({
-  //       method,
-  //       url,
-  //       data: selectedEvent,
-  //       headers: {
-  //         Authorization: `Bearer ${user.token}`,
-  //       },
-  //     });
-
-  //     const updatedEventData = response.data;
-  //     if (selectedEvent.id) {
-  //       // Update existing event
-  //       setEvents(
-  //         events.map((event) =>
-  //           event.id === updatedEventData.id ? updatedEventData : event
-  //         )
-  //       );
-  //     } else {
-  //       // Create new event
-  //       setEvents([...events, updatedEventData]);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error saving event:", error);
-  //   }
-
-  //   setSelectedEvent(null);
-  //   setShowModal(false);
-  // };
   const handleSaveEvent = async () => {
     if (!user || !selectedEvent || !selectedEvent.course) {
       return;
@@ -208,7 +168,7 @@ const Calendar = () => {
         {
           headers: {
             Authorization: `Bearer ${user.token}`,
-            cache: 'no-cache'
+            cache: "no-cache",
           },
         }
       );
@@ -260,7 +220,7 @@ const Calendar = () => {
       const response = await axios.get(`${process.env.REACT_APP_ENDPOINT}`, {
         headers: {
           Authorization: `Bearer ${user.token}`,
-          "Cache-Control": "no-cache"
+          "Cache-Control": "no-cache",
         },
       });
       setEvents(response.data);
@@ -268,6 +228,72 @@ const Calendar = () => {
       console.log(error);
     }
   }, [user]);
+
+  //
+
+  const handleAcceptEvent = async () => {
+    if (!user || !selectedEvent) {
+      return;
+    }
+
+    try {
+      await axios.put(
+        `${process.env.REACT_APP_ENDPOINT}/accept/${selectedEvent.id}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
+      // Update the event status locally
+      setEvents(
+        events.map((event) =>
+          event.id === selectedEvent.id
+            ? { ...event, status: "accepted" }
+            : event
+        )
+      );
+    } catch (error) {
+      console.error("Error accepting event:", error);
+    }
+
+    setSelectedEvent(null);
+    setShowModal(false);
+  };
+
+  const handleDenyEvent = async () => {
+    if (!user || !selectedEvent) {
+      return;
+    }
+
+    try {
+      await axios.put(
+        `${process.env.REACT_APP_ENDPOINT}/deny/${selectedEvent.id}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
+      // Update the event status locally
+      setEvents(
+        events.map((event) =>
+          event.id === selectedEvent.id ? { ...event, status: "denied" } : event
+        )
+      );
+    } catch (error) {
+      console.error("Error denying event:", error);
+    }
+
+    setSelectedEvent(null);
+    setShowModal(false);
+  };
+
+  //
 
   useEffect(() => {
     if (user) {
@@ -284,6 +310,8 @@ const Calendar = () => {
         <button onClick={() => changeView("dayGridMonth")}>Month</button>
       </div>
       <FullCalendar
+        // slotMinTime="08:00:00"
+        // slotMaxTime="17:00:00"
         nowIndicator={true}
         now={new Date()}
         ref={calendarRef}
@@ -315,14 +343,18 @@ const Calendar = () => {
         eventResize={handleEventResize} // Handle event resize
       />
       {showModal && (
-        <Modal onClose={() => setShowModal(false)} onDelete={handleDeleteEvent}>
+        <Modal
+          onClose={() => setShowModal(false)}
+          onDelete={handleDeleteEvent}
+          onAccept={handleAcceptEvent}
+          onDeny={handleDenyEvent}
+        >
           <h2>
             {selectedEvent.start} - {selectedEvent.end}
           </h2>
           <input
             type="text"
             placeholder="Event Name"
-            // Set value from selectedEvent.title (assuming it's a state variable)
             value={selectedEvent.title}
             onChange={(e) => handleInputChange(e, "title")}
           />
@@ -351,6 +383,16 @@ const Calendar = () => {
           <button className="save-button" onClick={handleSaveEvent}>
             Save Event
           </button>
+          {selectedEvent.status === "pending" && (
+            <>
+              <button className="accept-button" onClick={handleAcceptEvent}>
+                Accept Event
+              </button>
+              <button className="deny-button" onClick={handleDenyEvent}>
+                Deny Event
+              </button>
+            </>
+          )}
         </Modal>
       )}
     </div>

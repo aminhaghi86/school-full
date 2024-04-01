@@ -1,4 +1,4 @@
-const { User, Schedule, Notification } = require("../model/task");
+const { User, Schedule, Notification,sequelize } = require("../model/task");
 const { Op } = require("sequelize");
 // const { sequelize } = require("../model/task");
 // Get all schedules for a user
@@ -148,45 +148,98 @@ const sendNotification = async (teacher, notificationDetails) => {
   }
 };
 //
+
 //
 
-// Function to notify all available teachers (pseudo-code, implement according to your notification system)
-// const notifyAvailableTeachers = async (teachers, schedule) => {
-//   // Loop through all teachers and send a notification
-//   for (const teacher of teachers) {
-//     // Send notification to teacher
-//     // This is pseudo-code, replace with your actual notification logic
-//     await sendNotification(teacher, {
-//       message: `New available schedule from ${schedule.start} to ${schedule.end}. Do you want to accept?`,
-//       scheduleId: schedule.id,
-//       // Include any other relevant information for the notification
+// const acceptSchedule = async (req, res) => {
+//   const { scheduleId } = req.body;
+//   const teacherId = req.user.id;
+
+//   try {
+//     const schedule = await Schedule.findByPk(scheduleId);
+
+//     // Check if the schedule is already accepted by another teacher
+//     if (!schedule || schedule.status === "active") {
+//       return res.status(404).json({
+//         message: "Schedule not found or already accepted by another teacher",
+//       });
+//     }
+
+//     // Update the schedule to be accepted by the teacher
+//     await schedule.update({ status: "active", userId: teacherId });
+
+//     // Cancel all other pending schedules for the same event
+//     await Schedule.update(
+//       { status: "cancelled" },
+//       { where: { id: { [Op.ne]: scheduleId }, title: schedule.title, start: schedule.start, end: schedule.end, status: "pending" } }
+//     );
+
+//     // Destroy all notifications related to the pending schedules that are now cancelled
+//     await Notification.destroy({
+//       where: { scheduleId: { [Op.ne]: scheduleId }, message: { [Op.like]: `%${schedule.title}%` } }
 //     });
+
+//     res.status(200).json({ message: "Schedule accepted", schedule });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Internal server error" });
 //   }
 // };
-
-//
-
 const acceptSchedule = async (req, res) => {
   const { scheduleId } = req.body;
   const teacherId = req.user.id;
 
-  try {
-    const schedule = await Schedule.findByPk(scheduleId);
+  // Start a transaction
+  const t = await sequelize.transaction();
 
-    // Check if the schedule is pending and available to be accepted
-    if (!schedule || schedule.status !== "pending") {
+  try {
+    const schedule = await Schedule.findByPk(scheduleId, { transaction: t });
+
+    // Check if the schedule is already accepted by another teacher
+    if (!schedule || schedule.status === "active") {
+      await t.rollback();
       return res.status(404).json({
-        message: "Schedule not found or not available for acceptance",
+        message: "Schedule not found or already accepted by another teacher",
       });
     }
 
     // Update the schedule to be accepted by the teacher
-    await schedule.update({ status: "accepted", userId: teacherId });
+    await schedule.update(
+      { status: "active", userId: teacherId },
+      { transaction: t }
+    );
+
+    // Cancel all other pending schedules for the same event
+    await Schedule.update(
+      { status: "cancelled" },
+      {
+        where: {
+          id: { [Op.ne]: scheduleId },
+          title: schedule.title,
+          start: schedule.start,
+          end: schedule.end,
+          status: "pending",
+        },
+        transaction: t,
+      }
+    );
+
+    // Destroy all notifications related to the pending schedules that are now cancelled
     await Notification.destroy({
-      where: { scheduleId: schedule.id, userId: teacherId },
+      where: {
+        scheduleId: { [Op.ne]: scheduleId },
+        message: { [Op.like]: `%${schedule.title}%` },
+      },
+      transaction: t,
     });
+
+    // Commit the transaction
+    await t.commit();
+
     res.status(200).json({ message: "Schedule accepted", schedule });
   } catch (error) {
+    // If an error occurs, roll back the transaction
+    await t.rollback();
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
@@ -228,7 +281,9 @@ const deleteSchedule = async (req, res) => {
 
     // Check if the user requesting the delete is the owner of the schedule
     if (scheduleToDelete.userId !== req.user.id) {
-      return res.status(403).json({ message: "Not authorized to delete this schedule" });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this schedule" });
     }
 
     const { start, end, title, description, course } = scheduleToDelete;
@@ -259,7 +314,8 @@ const deleteSchedule = async (req, res) => {
 
     // Respond with success message
     res.status(200).json({
-      message: "Original schedule deleted and new pending schedules created and notified",
+      message:
+        "Original schedule deleted and new pending schedules created and notified",
       pendingSchedules: pendingSchedules.map((schedule) => schedule.id), // Send back only the IDs or necessary info
     });
   } catch (error) {
@@ -278,13 +334,11 @@ const notifyAvailableTeachers = async (teachers, pendingSchedules) => {
         await sendNotification(teacher, {
           message: `New available schedule from ${pendingSchedule.start} to ${pendingSchedule.end}. Do you want to accept?`,
           scheduleId: pendingSchedule.id,
-          // Include any other relevant information for the notification
         });
       }
     }
   }
 };
-// module.exports = { sequelize, User, Schedule };
 //
 
 module.exports = {

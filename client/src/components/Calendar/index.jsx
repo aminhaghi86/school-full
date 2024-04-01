@@ -239,9 +239,9 @@ const Calendar = () => {
     if (!user || !selectedEvent) {
       return;
     }
-  
+
     try {
-      await axios.post(
+      const response = await axios.post(
         `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}/accept`,
         { scheduleId: selectedEvent.id },
         {
@@ -250,19 +250,27 @@ const Calendar = () => {
           },
         }
       );
-  
+
       // Update the event status locally
-      setEvents(
-        events.map((event) =>
-          event.id === selectedEvent.id
-            ? { ...event, status: "accepted", className: "event-accepted" }
-            : event
-        )
-      );
+      if (response.status === 200) {
+        setEvents(
+          events.map((event) =>
+            event.id === selectedEvent.id
+              ? { ...event, status: "accepted", className: "event-accepted" }
+              : event
+          )
+        );
+      }
     } catch (error) {
-      console.error("Error accepting event:", error);
+      if (error.response && error.response.status === 404) {
+        alert("This schedule has already been accepted by another teacher.");
+        // Optionally, refresh the list of events to get the latest status
+        fetchEvents();
+      } else {
+        console.error("Error accepting event:", error);
+      }
     }
-  
+
     setSelectedEvent(null);
     setShowModal(false);
   };
@@ -273,7 +281,7 @@ const Calendar = () => {
     }
 
     try {
-      const response =await axios.post(
+      const response = await axios.post(
         `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}/deny`,
         { scheduleId: selectedEvent.id },
         {
@@ -284,14 +292,15 @@ const Calendar = () => {
       );
 
       if (response.status === 200) {
-      // Update the event status locally
-      setEvents(
-        events.map((event) =>
-          event.id === selectedEvent.id
-            ? { ...event, status: "denied", className: "event-denied" }
-            : event
-        )
-      );}
+        // Update the event status locally
+        setEvents(
+          events.map((event) =>
+            event.id === selectedEvent.id
+              ? { ...event, status: "denied", className: "event-denied" }
+              : event
+          )
+        );
+      }
     } catch (error) {
       console.error("Error denying event:", error);
     }
@@ -390,7 +399,7 @@ const Calendar = () => {
           <button className="save-button" onClick={handleSaveEvent}>
             Save Event
           </button>
-          {selectedEvent.status === "pending" && (
+          {selectedEvent.status === "active" && (
             <>
               <button className="accept-button" onClick={handleAcceptEvent}>
                 Accept Event

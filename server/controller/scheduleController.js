@@ -1,5 +1,20 @@
 const { User, Schedule, Notification, sequelize } = require("../model/task");
 const { Op } = require("sequelize");
+const io = require('../server')
+const { getIO } = require('../socket');
+// Create a function to handle socket connections
+// Remove the local 'io' declaration inside the setupSocketIO function, as it will now be passed as a parameter.
+const setupSocketIO = (io) => {
+  // Listen for socket connections on the passed io instance
+  io.on("connection", (socket) => {
+    console.log("A client connected");
+  });
+
+  // No need to return io, it's already external to this function
+};
+
+
+
 const getAllSchedules = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -75,18 +90,17 @@ const updateSchedule = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-//
 
 // New function to find all available teachers
 
-//
-
+// Function to accept a schedule
 const acceptSchedule = async (req, res) => {
   const { scheduleId } = req.body;
   const teacherId = req.user.id;
 
   let t;
   try {
+    const io = getIO(); 
     // Start a transaction
     t = await sequelize.transaction();
 
@@ -125,11 +139,8 @@ const acceptSchedule = async (req, res) => {
       transaction: t,
     });
 
-    // Notify only the accepted teacher
-    await sendNotification(req.user, {
-      message: `You have accepted the schedule from ${schedule.start} to ${schedule.end}.`,
-      scheduleId: scheduleId,
-    });
+    // Emit event to notify the frontend that the schedule has been accepted
+    io.emit("scheduleAccepted", scheduleId);
 
     // Commit the transaction
     await t.commit();
@@ -145,19 +156,15 @@ const acceptSchedule = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-
-//
+// Function to deny a schedule
+// Function to deny a schedule
+// Inside your server-side logic where you handle denying a schedule
 const denySchedule = async (req, res) => {
   const { scheduleId } = req.body;
   const teacherId = req.user.id;
 
   try {
+    const io = getIO(); 
     const schedule = await Schedule.findByPk(scheduleId);
 
     if (!schedule || schedule.status !== "pending") {
@@ -167,7 +174,9 @@ const denySchedule = async (req, res) => {
     }
 
     await schedule.update({ status: "denied", userId: teacherId });
-    await Notification.destroy({ where: { scheduleId: schedule.id } });
+
+    // Emit the "scheduleDenied" event to the client
+    io.emit("scheduleDenied", scheduleId);
 
     res.status(200).json({ message: "Schedule denied" });
   } catch (error) {
@@ -175,6 +184,9 @@ const denySchedule = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
+
 const findAllAvailableTeachers = async (start, end) => {
   try {
     const teachers = await User.findAll();
@@ -245,6 +257,7 @@ const notifyAvailableTeachers = async (teachers, pendingSchedules) => {
   }
 };
 
+// Function to delete a schedule
 const deleteSchedule = async (req, res) => {
   try {
     const { id } = req.params;
@@ -296,6 +309,7 @@ const deleteSchedule = async (req, res) => {
   }
 };
 
+// Export all functions
 module.exports = {
   getAllSchedules,
   getScheduleById,
@@ -304,4 +318,5 @@ module.exports = {
   deleteSchedule,
   acceptSchedule,
   denySchedule,
+  setupSocketIO, // Export the setupSocketIO function
 };

@@ -48,6 +48,8 @@ const createSchedule = async (req, res) => {
       course,
       userId,
     });
+    const io = getIO();
+    io.emit("scheduleCreated", schedule);
     res.status(201).json(schedule);
   } catch (error) {
     console.error(error);
@@ -138,10 +140,10 @@ const acceptSchedule = async (req, res) => {
     });
 
     // Emit event to notify the frontend that the schedule has been accepted
-    io.emit("scheduleAccepted", scheduleId);
 
     // Commit the transaction
     await t.commit();
+    io.emit("scheduleAccepted", { scheduleId, teacherId });
 
     res.status(200).json({ message: "Schedule accepted", schedule });
   } catch (error) {
@@ -161,7 +163,7 @@ const denySchedule = async (req, res) => {
   const teacherId = req.user.id;
 
   try {
-    const io = getIO();
+   
     const schedule = await Schedule.findByPk(scheduleId);
 
     if (!schedule || schedule.status !== "pending") {
@@ -171,7 +173,7 @@ const denySchedule = async (req, res) => {
     }
 
     await schedule.update({ status: "denied", userId: teacherId });
-
+    const io = getIO();
     // Emit the "scheduleDenied" event to the client
     io.emit("scheduleDenied", scheduleId);
 
@@ -257,7 +259,7 @@ const deleteSchedule = async (req, res) => {
   try {
     const { id } = req.params;
     const scheduleToDelete = await Schedule.findByPk(id);
-
+    const io = getIO();
     if (!scheduleToDelete) {
       return res.status(404).json({ message: "Schedule not found" });
     }
@@ -294,7 +296,9 @@ const deleteSchedule = async (req, res) => {
 
       // Notify all available teachers about the new pending schedule
       await notifyAvailableTeachers(availableTeachers, newPendingSchedules);
-
+      await scheduleToDelete.destroy();
+      const io = getIO();
+      io.emit("scheduleDeleted", id);
       // Respond with success message
       return res.status(200).json({
         message:
@@ -302,9 +306,7 @@ const deleteSchedule = async (req, res) => {
         pendingSchedules: newPendingSchedules.map((schedule) => schedule.id),
       });
     }
-
     // If the schedule is already accepted, remove it from the teacher's calendar
-    await scheduleToDelete.destroy();
 
     // Create new pending schedules for the event
     const availableTeachers = await findAllAvailableTeachers(start, end);
@@ -325,7 +327,7 @@ const deleteSchedule = async (req, res) => {
 
     // Notify all available teachers about the new pending schedule
     await notifyAvailableTeachers(availableTeachers, newPendingSchedules);
-
+    await io.emit("scheduleDeleted", id);
     // Respond with success message
     res.status(200).json({
       message: "Accepted schedule deleted from the calendar",

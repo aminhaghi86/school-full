@@ -25,21 +25,145 @@ const Calendar = () => {
   const calendarRef = useRef(null);
   const socketRef = useRef();
 
-  useEffect(() => {
-    socketRef.current = io(process.env.REACT_APP_SOCKET_ENDPOINT);
+  // useEffect(() => {
+  //   socketRef.current = io(process.env.REACT_APP_SOCKET_ENDPOINT, {
+  //     query: { userId: user.id },
+  //     reconnectionAttempts: 5,
+  //     reconnectionDelay: 3000,
+  //   });
 
-    socketRef.current.on("scheduleDenied", (scheduleId) => {
+  //   socketRef.current.on("connect_error", (err) => {
+  //     console.error("Socket connection error:", err);
+  //   });
+
+  //   socketRef.current.on("scheduleCreated", (newSchedule) => {
+  //     setEvents((prevEvents) => [...prevEvents, newSchedule]);
+  //   });
+
+  //   socketRef.current.on("scheduleUpdated", (updatedSchedule) => {
+  //     setEvents((prevEvents) =>
+  //       prevEvents.map((event) =>
+  //         event.id === updatedSchedule.id ? updatedSchedule : event
+  //       )
+  //     );
+  //   });
+
+  //   socketRef.current.on("scheduleAccepted",  (data) => {
+  //     const { scheduleId } = data;
+  //      setEvents((prevEvents) =>
+  //       prevEvents.map((event) =>
+  //         event.id === scheduleId ? { ...event, status: "active" } : event
+  //       )
+  //     );
+  //   });
+
+  //   socketRef.current.on("scheduleDeleted", (deletedScheduleId) => {
+  //     setEvents((prevEvents) =>
+  //       prevEvents.filter((event) => event.id !== deletedScheduleId)
+  //     );
+  //   });
+
+  //   return () => {
+  //     socketRef.current.disconnect();
+  //   };
+  // }, [user.id]);
+  // useEffect(() => {
+  //   socketRef.current = io(process.env.REACT_APP_SOCKET_ENDPOINT, {
+  //     query: { userId: user.id },
+  //     reconnectionAttempts: 5,
+  //     reconnectionDelay: 3000,
+  //   });
+
+  //   socketRef.current.on("connect", () => {
+  //     console.log("Socket connected");
+
+  //     socketRef.current.on("scheduleCreated", (newSchedule) => {
+  //       setEvents((prevEvents) => [...prevEvents, newSchedule]);
+  //     });
+
+  //     socketRef.current.on("scheduleUpdated", (updatedSchedule) => {
+  //       setEvents((prevEvents) =>
+  //         prevEvents.map((event) =>
+  //           event.id === updatedSchedule.id ? updatedSchedule : event
+  //         )
+  //       );
+  //     });
+
+  //     socketRef.current.on("scheduleAccepted", (data) => {
+  //       const { scheduleId } = data;
+  //       setEvents((prevEvents) =>
+  //         prevEvents.map((event) =>
+  //           event.id === scheduleId ? { ...event, status: "active" } : event
+  //         )
+  //       );
+  //     });
+
+  //     socketRef.current.on("scheduleDeleted", (deletedScheduleId) => {
+  //       setEvents((prevEvents) =>
+  //         prevEvents.filter((event) => event.id !== deletedScheduleId)
+  //       );
+  //     });
+  //   });
+
+  //   socketRef.current.on("connect_error", (err) => {
+  //     console.error("Socket connection error:", err);
+  //   });
+
+  //   return () => {
+  //     socketRef.current.disconnect();
+  //   };
+  // }, [user.id]);
+  useEffect(() => {
+    if (!user) return;
+
+    socketRef.current = io(process.env.REACT_APP_SOCKET_ENDPOINT, {
+      query: { userId: user.id },
+      reconnectionAttempts: 5,
+      reconnectionDelay: 3000,
+    });
+
+    socketRef.current.on("connect", () => {
+      console.log("Socket connected");
+    });
+
+    socketRef.current.on("scheduleCreated", (newSchedule) => {
+      setEvents((prevEvents) => [...prevEvents, newSchedule]);
+    });
+
+    socketRef.current.on("scheduleUpdated", (updatedSchedule) => {
       setEvents((prevEvents) =>
         prevEvents.map((event) =>
-          event.id === scheduleId ? { ...event, status: "denied" } : event
+          event.id === updatedSchedule.id ? updatedSchedule : event
         )
       );
     });
 
+    socketRef.current.on("scheduleAccepted", (data) => {
+      const { scheduleId } = data;
+      setEvents((prevEvents) =>
+        prevEvents.map((event) =>
+          event.id === scheduleId ? { ...event, status: "active" } : event
+        )
+      );
+    });
+
+    socketRef.current.on("scheduleDeleted", (deletedScheduleId) => {
+      setEvents((prevEvents) =>
+        prevEvents.filter((event) => event.id !== deletedScheduleId)
+      );
+    });
+
+    socketRef.current.on("connect_error", (err) => {
+      console.error("Socket connection error:", err);
+    });
+
     return () => {
-      socketRef.current.disconnect();
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
     };
-  }, []);
+  }, [user]);
+
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -83,6 +207,9 @@ const Calendar = () => {
           status: "accepted",
           className: "event-accepted",
         };
+        socketRef.current.emit("scheduleAccepted", {
+          scheduleId: selectedEvent.id,
+        });
         setEvents((prevEvents) =>
           prevEvents.map((event) =>
             event.id === selectedEvent.id ? updatedEvent : event
@@ -129,6 +256,9 @@ const Calendar = () => {
             event.id === selectedEvent.id ? updatedEvent : event
           )
         );
+        socketRef.current.emit("scheduleDenied", {
+          scheduleId: selectedEvent.id,
+        });
       }
     } catch (error) {
       console.error("Error denying event:", error);
@@ -278,8 +408,9 @@ const Calendar = () => {
           },
         }
       );
-
+      socketRef.current.emit("scheduleDeleted", selectedEvent.id);
       setEvents(events.filter((event) => event.id !== selectedEvent.id));
+      // socketRef.current.emit("scheduleDeleted", selectedEvent.id);
     } catch (error) {
       console.error("Error deleting event:", error);
     }

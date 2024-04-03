@@ -28,18 +28,18 @@ exports.initializeSocket = (server) => {
 
     // Handle delete operation
     // Inside your backend socket initialization code
-    socket.on("delete", async (id) => {
+    socket.on("delete",  (id) => {
       try {
         // Perform delete operation
         // Emit event to notify other clients about the deletion
-       await io.emit("scheduleDeleted", id);
+        io.emit("scheduleDeleted", id);
       } catch (error) {
         console.error("Error deleting event:", error);
       }
     });
 
     // Handle accept operation
-    socket.on("scheduleAccepted", async (data) => {
+    socket.on("scheduleAccepted",  (data) => {
       // Emit to all clients
       io.emit("scheduleAccepted", data);
     });

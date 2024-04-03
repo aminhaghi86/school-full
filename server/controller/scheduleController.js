@@ -60,6 +60,7 @@ const createSchedule = async (req, res) => {
 // Update a schedule
 const updateSchedule = async (req, res) => {
   try {
+    const io = getIO();
     const { id } = req.params;
     const { start, end, title, description, course } = req.body;
 
@@ -80,7 +81,7 @@ const updateSchedule = async (req, res) => {
     schedule.course = course;
 
     await schedule.save();
-
+    io.emit("scheduleUpdated", schedule);
     res.status(200).json(schedule);
   } catch (error) {
     console.error(error);
@@ -143,7 +144,8 @@ const acceptSchedule = async (req, res) => {
 
     // Commit the transaction
     await t.commit();
-    io.emit("scheduleAccepted", { scheduleId, teacherId });
+     io.emit("scheduleAccepted", { scheduleId, teacherId });
+    
 
     res.status(200).json({ message: "Schedule accepted", schedule });
   } catch (error) {
@@ -163,7 +165,6 @@ const denySchedule = async (req, res) => {
   const teacherId = req.user.id;
 
   try {
-   
     const schedule = await Schedule.findByPk(scheduleId);
 
     if (!schedule || schedule.status !== "pending") {
@@ -297,7 +298,6 @@ const deleteSchedule = async (req, res) => {
       // Notify all available teachers about the new pending schedule
       await notifyAvailableTeachers(availableTeachers, newPendingSchedules);
       await scheduleToDelete.destroy();
-      const io = getIO();
       io.emit("scheduleDeleted", id);
       // Respond with success message
       return res.status(200).json({
@@ -327,7 +327,7 @@ const deleteSchedule = async (req, res) => {
 
     // Notify all available teachers about the new pending schedule
     await notifyAvailableTeachers(availableTeachers, newPendingSchedules);
-    await io.emit("scheduleDeleted", id);
+     io.emit("scheduleDeleted", id);
     // Respond with success message
     res.status(200).json({
       message: "Accepted schedule deleted from the calendar",

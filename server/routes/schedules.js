@@ -10,7 +10,7 @@ const {
 } = require("../controller/scheduleController");
 const { requireAuth } = require("../middleware/requireAuth");
 
-const setupRoutes = (app) => {
+const setupRoutes = (app, io) => {
   const router = express.Router();
 
   // Apply authentication middleware to all routes in this router

@@ -78,82 +78,22 @@ const updateSchedule = async (req, res) => {
 //
 
 // New function to find all available teachers
-const findAllAvailableTeachers = async (start, end) => {
-  try {
-    const teachers = await User.findAll();
-    const availableTeachers = [];
 
-    for (const teacher of teachers) {
-      const conflictingSchedules = await Schedule.findAll({
-        where: {
-          userId: teacher.id,
-          [Op.or]: [
-            { start: { [Op.lt]: end, [Op.gt]: start } },
-            { end: { [Op.gt]: start, [Op.lt]: end } },
-            {
-              [Op.and]: [
-                { start: { [Op.lte]: start } },
-                { end: { [Op.gte]: end } },
-              ],
-            },
-          ],
-        },
-      });
-
-      if (conflictingSchedules.length === 0) {
-        // availableTeachers.push(teacher.toJSON());
-        availableTeachers.push(teacher);
-      }
-    }
-
-    return availableTeachers;
-  } catch (error) {
-    console.error("Error finding available teachers:", error);
-    throw error;
-  }
-};
 //
-const sendNotification = async (teacher, notificationDetails) => {
-  console.log(`Sending notification to teacher with ID: ${teacher.id}`);
-  console.log(
-    `Sending notification notificationDetails: ${notificationDetails}`
-  );
-  try {
-    // Create a new notification record in the database
-    const notification = await Notification.create({
-      userId: teacher.id,
-      message: notificationDetails.message,
-      scheduleId: notificationDetails.scheduleId, // This can be null if not related to a specific schedule
-    });
-
-    // Log the notification's details
-    console.log(
-      `Notification created with ID: ${notification.id} for teacher with ID: ${teacher.id}`
-    );
-  } catch (error) {
-    console.error(
-      `Failed to send notification to teacher with ID: ${teacher.id}`,
-      error
-    );
-  }
-};
 
 const acceptSchedule = async (req, res) => {
   const { scheduleId } = req.body;
   const teacherId = req.user.id;
 
-  // Start a transaction
-  const t = await sequelize.transaction();
-
+  let t;
   try {
+    // Start a transaction
+    t = await sequelize.transaction();
+
     const schedule = await Schedule.findByPk(scheduleId, { transaction: t });
 
-    // Check if the schedule is already accepted by another teacher
     if (!schedule || schedule.status === "active") {
-      await t.rollback();
-      return res.status(404).json({
-        message: "Schedule not found or already accepted by another teacher",
-      });
+      throw new Error("Schedule not found or already accepted by another teacher");
     }
 
     // Update the schedule to be accepted by the teacher
@@ -162,12 +102,11 @@ const acceptSchedule = async (req, res) => {
       { transaction: t }
     );
 
-    // Cancel all other pending schedules for the same event
+    // Cancel all other pending schedules for the same event except for the accepted one
     await Schedule.update(
       { status: "cancelled" },
       {
         where: {
-          id: { [Op.ne]: scheduleId },
           title: schedule.title,
           start: schedule.start,
           end: schedule.end,
@@ -186,17 +125,33 @@ const acceptSchedule = async (req, res) => {
       transaction: t,
     });
 
+    // Notify only the accepted teacher
+    await sendNotification(req.user, {
+      message: `You have accepted the schedule from ${schedule.start} to ${schedule.end}.`,
+      scheduleId: scheduleId,
+    });
+
     // Commit the transaction
     await t.commit();
 
     res.status(200).json({ message: "Schedule accepted", schedule });
   } catch (error) {
     // If an error occurs, roll back the transaction
-    await t.rollback();
+    if (t) {
+      await t.rollback();
+    }
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
+
+
+
+
+
+
 //
 const denySchedule = async (req, res) => {
   const { scheduleId } = req.body;
@@ -220,8 +175,75 @@ const denySchedule = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+const findAllAvailableTeachers = async (start, end) => {
+  try {
+    const teachers = await User.findAll();
+    const availableTeachers = [];
 
-//
+    for (const teacher of teachers) {
+      const conflictingSchedules = await Schedule.findAll({
+        where: {
+          userId: teacher.id,
+          [Op.or]: [
+            { start: { [Op.lt]: end, [Op.gt]: start } },
+            { end: { [Op.gt]: start, [Op.lt]: end } },
+            {
+              [Op.and]: [
+                { start: { [Op.lte]: start } },
+                { end: { [Op.gte]: end } },
+              ],
+            },
+          ],
+        },
+      });
+
+      if (conflictingSchedules.length === 0) {
+        availableTeachers.push(teacher);
+      }
+    }
+
+    return availableTeachers;
+  } catch (error) {
+    console.error("Error finding available teachers:", error);
+    throw error;
+  }
+};
+
+const sendNotification = async (teacher, notificationDetails) => {
+  console.log(`Sending notification to teacher with ID: ${teacher.id}`);
+  console.log(
+    `Sending notification notificationDetails: ${notificationDetails}`
+  );
+  try {
+    const notification = await Notification.create({
+      userId: teacher.id,
+      message: notificationDetails.message,
+      scheduleId: notificationDetails.scheduleId,
+    });
+
+    console.log(
+      `Notification created with ID: ${notification.id} for teacher with ID: ${teacher.id}`
+    );
+  } catch (error) {
+    console.error(
+      `Failed to send notification to teacher with ID: ${teacher.id}`,
+      error
+    );
+  }
+};
+
+const notifyAvailableTeachers = async (teachers, pendingSchedules) => {
+  for (const teacher of teachers) {
+    for (const pendingSchedule of pendingSchedules) {
+      if (pendingSchedule.userId === teacher.id) {
+        await sendNotification(teacher, {
+          message: `New available schedule from ${pendingSchedule.start} to ${pendingSchedule.end}. Do you want to accept?`,
+          scheduleId: pendingSchedule.id,
+        });
+      }
+    }
+  }
+};
 
 const deleteSchedule = async (req, res) => {
   try {
@@ -232,7 +254,6 @@ const deleteSchedule = async (req, res) => {
       return res.status(404).json({ message: "Schedule not found" });
     }
 
-    // Check if the user requesting the delete is the owner of the schedule
     if (scheduleToDelete.userId !== req.user.id) {
       return res
         .status(403)
@@ -241,10 +262,11 @@ const deleteSchedule = async (req, res) => {
 
     const { start, end, title, description, course } = scheduleToDelete;
 
-    // Find all available teachers
     const availableTeachers = await findAllAvailableTeachers(start, end);
 
-    // Create pending schedules for each available teacher
+    // Remove teacher ID from the schedule
+    await scheduleToDelete.update({ userId: null });
+
     const pendingSchedules = await Promise.all(
       availableTeachers.map((teacher) =>
         Schedule.create({
@@ -259,9 +281,6 @@ const deleteSchedule = async (req, res) => {
       )
     );
 
-    // Now that we have created pending schedules, we can safely delete the original schedule
-    await scheduleToDelete.destroy();
-
     // Notify all available teachers about the new pending schedules
     await notifyAvailableTeachers(availableTeachers, pendingSchedules);
 
@@ -269,30 +288,13 @@ const deleteSchedule = async (req, res) => {
     res.status(200).json({
       message:
         "Original schedule deleted and new pending schedules created and notified",
-      pendingSchedules: pendingSchedules.map((schedule) => schedule.id), // Send back only the IDs or necessary info
+      pendingSchedules: pendingSchedules.map((schedule) => schedule.id),
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
-// Function to notify all available teachers
-const notifyAvailableTeachers = async (teachers, pendingSchedules) => {
-  // Loop through all teachers and send a notification for each pending schedule
-  for (const teacher of teachers) {
-    for (const pendingSchedule of pendingSchedules) {
-      if (pendingSchedule.userId === teacher.id) {
-        // Send notification to teacher
-        await sendNotification(teacher, {
-          message: `New available schedule from ${pendingSchedule.start} to ${pendingSchedule.end}. Do you want to accept?`,
-          scheduleId: pendingSchedule.id,
-        });
-      }
-    }
-  }
-};
-//
 
 module.exports = {
   getAllSchedules,

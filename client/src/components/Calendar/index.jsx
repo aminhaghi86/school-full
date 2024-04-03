@@ -215,23 +215,27 @@ const Calendar = () => {
     setCalendarView(currentView.title);
     console.log(view);
   };
-  const fetchEvents = useCallback(async () => {
-    try {
-      const response = await axios.get(`${process.env.REACT_APP_ENDPOINT}`, {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-          "Cache-Control": "no-cache",
-        },
-      });
-      const fetchedEvents = response.data.map((event) => ({
-        ...event,
-        className: `event-${event.status}`,
-      }));
-      setEvents(fetchedEvents);
-    } catch (error) {
-      console.log(error);
-    }
-  }, [user]);
+// Frontend code
+const fetchEvents = useCallback(async () => {
+  try {
+    if (!user) return; 
+
+    const response = await axios.get(`${process.env.REACT_APP_ENDPOINT}`, {
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+        "Cache-Control": "no-cache",
+      },
+    });
+    const fetchedEvents = response.data.map((event) => ({
+      ...event,
+      className: `event-${event.status}`,
+    }));
+    setEvents(fetchedEvents);
+  } catch (error) {
+    console.log(error);
+  }
+}, [user]);
+
 
   //
 
@@ -251,13 +255,16 @@ const Calendar = () => {
         }
       );
 
-      // Update the event status locally
       if (response.status === 200) {
+        // Update the event status locally
+        const updatedEvent = {
+          ...selectedEvent,
+          status: "accepted",
+          className: "event-accepted",
+        };
         setEvents(
           events.map((event) =>
-            event.id === selectedEvent.id
-              ? { ...event, status: "accepted", className: "event-accepted" }
-              : event
+            event.id === selectedEvent.id ? updatedEvent : event
           )
         );
       }
@@ -293,11 +300,14 @@ const Calendar = () => {
 
       if (response.status === 200) {
         // Update the event status locally
+        const updatedEvent = {
+          ...selectedEvent,
+          status: "denied",
+          className: "event-denied",
+        };
         setEvents(
           events.map((event) =>
-            event.id === selectedEvent.id
-              ? { ...event, status: "denied", className: "event-denied" }
-              : event
+            event.id === selectedEvent.id ? updatedEvent : event
           )
         );
       }
@@ -316,7 +326,6 @@ const Calendar = () => {
       fetchEvents();
     }
   }, [user, fetchEvents]);
-  // Only user dependency here
 
   return (
     <div style={{ margin: "10rem 0" }}>
@@ -326,8 +335,8 @@ const Calendar = () => {
         <button onClick={() => changeView("dayGridMonth")}>Month</button>
       </div>
       <FullCalendar
-        // slotMinTime="08:00:00"
-        // slotMaxTime="17:00:00"
+        slotMinTime="08:00:00"
+        slotMaxTime="17:00:00"
         nowIndicator={true}
         now={new Date()}
         ref={calendarRef}

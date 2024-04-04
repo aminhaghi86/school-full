@@ -12,19 +12,8 @@ exports.initializeSocket = (server) => {
   io.on("connection", (socket) => {
     console.log("A client connected");
 
-    // Handle create operation
-    socket.on("create", (data) => {
-      // Perform create operation (e.g., save to database)
-      // Then emit to all clients
-      io.emit("scheduleCreated", data); // Updated event name
-    });
 
-    // Handle update operation
-    socket.on("update", (data) => {
-      // Perform update operation (e.g., update database)
-      // Then emit to all clients
-      io.emit("scheduleUpdated", data); // Updated event name
-    });
+ 
 
     // Handle delete operation
     // Inside your backend socket initialization code

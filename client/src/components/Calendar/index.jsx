@@ -29,7 +29,7 @@ const Calendar = () => {
     // Socket connection setup
     if (!user) return;
 
-    socketRef.current = io('http://localhost:8001', {
+    socketRef.current = io("http://localhost:8001", {
       query: { userId: user.id },
       reconnectionAttempts: 5,
       reconnectionDelay: 3000,
@@ -40,23 +40,13 @@ const Calendar = () => {
     });
 
     // Socket event handlers
-    socketRef.current.on("scheduleCreated", (newSchedule) => {
-      setEvents((prevEvents) => [...prevEvents, newSchedule]);
-    });
-
-    socketRef.current.on("scheduleUpdated", (updatedSchedule) => {
-      setEvents((prevEvents) =>
-        prevEvents.map((event) =>
-          event.id === updatedSchedule.id ? updatedSchedule : event
-        )
-      );
-    });
-
     socketRef.current.on("scheduleAccepted", (data) => {
       const { scheduleId, teacherId } = data;
       setEvents((prevEvents) =>
         prevEvents.map((event) =>
-          event.id === scheduleId ? { ...event, status: "active", userId: teacherId } : event
+          event.id === scheduleId
+            ? { ...event, status: "active", userId: teacherId }
+            : event
         )
       );
     });
@@ -364,10 +354,10 @@ const Calendar = () => {
       const updatedEventData = response.data;
       if (selectedEvent.id) {
         // Update existing event
-        socketRef.current.emit('scheduleUpdated', updatedEventData);
+        socketRef.current.emit("scheduleUpdated", updatedEventData);
       } else {
         // Create new event
-        socketRef.current.emit('scheduleCreated', updatedEventData);
+        socketRef.current.emit("scheduleCreated", updatedEventData);
       }
       if (selectedEvent.id) {
         // Update existing event

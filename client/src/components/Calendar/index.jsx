@@ -26,11 +26,12 @@ const Calendar = () => {
   const socketRef = useRef();
 
   useEffect(() => {
+    console.log('user',user);
     // Socket connection setup
     if (!user) return;
 
     socketRef.current = io("http://localhost:8001", {
-      query: { userId: user.id },
+      query: { userId: user.userId },
       reconnectionAttempts: 5,
       reconnectionDelay: 3000,
     });

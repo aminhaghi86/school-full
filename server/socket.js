@@ -13,7 +13,17 @@ exports.initializeSocket = (server) => {
     console.log("A client connected");
 
 
- 
+    const userId = socket.handshake.query.userId;
+    console.log('userId for socekt', userId);
+
+    // Here, you can use the userId to associate the socket connection with the user
+    // For example, you might want to store the socket with the userId in a map
+    // Or join a room with the userId
+
+    // Example: Joining a room with the userId
+    socket.join(userId);
+
+    socket.emit("connected", "You are connected");
 
     // Handle delete operation
     // Inside your backend socket initialization code

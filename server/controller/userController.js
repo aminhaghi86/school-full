@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { User } = require("../model/task");
 require("dotenv").config();
-const createToken = (id) => {
+const createToken = async (id) => {
 	// return jwt.sign({ id }, process.env.SECRET_JWT, { expiresIn: "3d" });
 	return jwt.sign({ id }, 'secret' ,{ expiresIn: "3d" });
 };
@@ -26,12 +26,13 @@ const Register = async (req, res) => {
 			password: hashedPassword,
 		});
 
-		const token = createToken(newUser.id);
+		const token = await createToken(newUser.id);
 
 		return res
 			.status(200)
 			.header("Authorization", `Bearer ${token}`)
 			.json({ email, token: token });
+			
 	} catch (error) {
 		console.log(error);
 		return res.status(500).json({ error: "Server Error" });
@@ -51,13 +52,18 @@ const Login = async (req, res) => {
 			throw new Error();
 		}
 
-		const token = createToken(user.id);
-
+		const token = await createToken(user.id);
+		console.log('email',email);
+			console.log('token',token);
+			console.log('userIddddduserIddddd',user.id);
 		return res
 			.status(200)
 			.header("Authorization", `Bearer ${token}`)
 			.json({ email, userId: user.id, token: token });
-	} catch (error) {
+			
+	
+	
+			} catch (error) {
 		res.status(401).json({ error: "Invalid credentials" });
 	}
 };

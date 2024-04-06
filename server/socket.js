@@ -14,7 +14,7 @@ exports.initializeSocket = (server) => {
 
 
     const userId = socket.handshake.query.userId;
-    console.log('userId for socekt', userId);
+    console.log('userId for socket', userId);
 
     // Here, you can use the userId to associate the socket connection with the user
     // For example, you might want to store the socket with the userId in a map
@@ -27,7 +27,7 @@ exports.initializeSocket = (server) => {
 
     // Handle delete operation
     // Inside your backend socket initialization code
-    socket.on("delete",  (id) => {
+    socket.on("scheduleDeleted",  (id) => {
       try {
         // Perform delete operation
         // Emit event to notify other clients about the deletion

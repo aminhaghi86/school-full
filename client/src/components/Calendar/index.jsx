@@ -25,49 +25,93 @@ const Calendar = () => {
   const calendarRef = useRef(null);
   const socketRef = useRef();
 
-  useEffect(() => {
-    console.log('user',user);
-    // Socket connection setup
-    if (!user) return;
+  // useEffect(() => {
+  //   console.log('user',user);
+  //   // Socket connection setup
+  //   if (!user) return;
 
-    socketRef.current = io("http://localhost:8001", {
-      query: { userId: user.userId },
-      reconnectionAttempts: 5,
-      reconnectionDelay: 3000,
-    });
+  //   socketRef.current = io("http://localhost:8001", {
+  //     query: { userId: user.userId },
+  //     reconnectionAttempts: 5,
+  //     reconnectionDelay: 3000,
+  //   });
 
-    socketRef.current.on("connect", () => {
-      console.log("Socket connected");
-    });
+  //   socketRef.current.on("connect", () => {
+  //     console.log("Socket connected");
+  //   });
 
-    // Socket event handlers
-    socketRef.current.on("scheduleAccepted", (data) => {
-      const { scheduleId, teacherId } = data;
-      setEvents((prevEvents) =>
-        prevEvents.map((event) =>
-          event.id === scheduleId
-            ? { ...event, status: "active", userId: teacherId }
-            : event
-        )
-      );
-    });
+  //   // Socket event handlers
+  //   socketRef.current.on("scheduleAccepted", (data) => {
+  //     const { scheduleId, teacherId } = data;
+  //     setEvents((prevEvents) =>
+  //       prevEvents.map((event) =>
+  //         event.id === scheduleId
+  //           ? { ...event, status: "active", userId: teacherId }
+  //           : event
+  //       )
+  //     );
+  //   });
 
-    socketRef.current.on("scheduleDeleted", (deletedScheduleId) => {
-      setEvents((prevEvents) =>
-        prevEvents.filter((event) => event.id !== deletedScheduleId)
-      );
-    });
+  //   socketRef.current.on("scheduleDeleted", (deletedScheduleId) => {
+  //     setEvents((prevEvents) =>
+  //       prevEvents.filter((event) => event.id !== deletedScheduleId)
+  //     );
+  //   });
 
-    socketRef.current.on("connect_error", (err) => {
-      console.error("Socket connection error:", err);
-    });
+  //   socketRef.current.on("connect_error", (err) => {
+  //     console.error("Socket connection error:", err);
+  //   });
 
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-    };
-  }, [user]);
+  //   return () => {
+  //     if (socketRef.current) {
+  //       socketRef.current.disconnect();
+  //     }
+  //   };
+  // }, [user]);
+// Client Side Socket Initialization
+useEffect(() => {
+  console.log('user',user);
+  // Socket connection setup
+  if (!user) return;
+
+  socketRef.current = io("http://localhost:8001", {
+    query: { userId: user.userId },
+    reconnectionAttempts: 5,
+    reconnectionDelay: 3000,
+  });
+
+  socketRef.current.on("connect", () => {
+    console.log("Socket connected");
+  });
+
+  // Socket event handlers
+  socketRef.current.on("scheduleAccepted", (data) => {
+    const { scheduleId, teacherId } = data;
+    setEvents((prevEvents) =>
+      prevEvents.map((event) =>
+        event.id === scheduleId
+          ? { ...event, status: "active", userId: teacherId }
+          : event
+      )
+    );
+  });
+
+  socketRef.current.on("scheduleDeleted", (deletedScheduleId) => {
+    setEvents((prevEvents) =>
+      prevEvents.filter((event) => event.id !== deletedScheduleId)
+    );
+  });
+
+  socketRef.current.on("connect_error", (err) => {
+    console.error("Socket connection error:", err);
+  });
+
+  return () => {
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+  };
+}, [user]);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -116,7 +160,7 @@ const Calendar = () => {
         socketRef.current.emit(
           "scheduleAccepted",
           // scheduleId: selectedEvent.id,
-          selectedEvent
+          updatedEvent
         );
 
         // Update local state immediately
@@ -163,9 +207,7 @@ const Calendar = () => {
         };
 
         // Emit socket event to notify other clients
-        socketRef.current.emit("scheduleDenied", {
-          scheduleId: selectedEvent.id,
-        });
+        socketRef.current.emit("scheduleDeleted", selectedEvent.id);
 
         // Update local state immediately
         setEvents((prevEvents) =>

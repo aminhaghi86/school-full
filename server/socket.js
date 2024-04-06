@@ -12,45 +12,81 @@ exports.initializeSocket = (server) => {
   io.on("connection", (socket) => {
     console.log("A client connected");
 
+    // const userId = socket.handshake.query.userId;
+    // console.log("userId for socket", userId);
+    // console.log("socket id", socket.id);
 
-    const userId = socket.handshake.query.userId;
-    console.log('userId for socket', userId);
+    // // Joining a room with the userId might not be required unless you also have functionality that targets individual users.
+    // socket.join(userId);
 
-    // Here, you can use the userId to associate the socket connection with the user
-    // For example, you might want to store the socket with the userId in a map
-    // Or join a room with the userId
-
-    // Example: Joining a room with the userId
-    socket.join(userId);
-
-    socket.emit("connected", "You are connected");
-
-    // Handle delete operation
-    // Inside your backend socket initialization code
-    socket.on("scheduleDeleted",  (id) => {
-      try {
-        // Perform delete operation
-        // Emit event to notify other clients about the deletion
-        io.emit("scheduleDeleted", id);
-      } catch (error) {
-        console.error("Error deleting event:", error);
+    // socket.emit("connected", socket.id + ":" + "You are connected");
+    socket.join('availableTeachers');
+    const teacherId = socket.handshake.query.teacherId;
+    if (teacherId) {
+      socket.join(`availableTeachers:${teacherId}`);
+    }
+    // socket.on("joinRoom", (room) => {
+    //   socket.join(room);
+    //   console.log(`Socket ${socket.id} joined room ${room}`);
+    // });
+    socket.on("leaveRoom", (room) => {
+      socket.leave(room);
+      console.log(`Socket ${socket.id} left room ${room}`);
+    });
+    // When sending a message, it broadcasts to all clients except the sender
+    // socket.on("send_message", (data) => {
+    //   console.log("data", data);
+    //   // To target a specific room, use `io.to(room).emit(...)` instead of broadcasting
+    //   if (data.type === "scheduleDeleted") {
+    //     io.to(`availableTeachers`).emit("receive_message", data);
+    //   } else {
+    //     // For other types, determine the appropriate room or emit logic
+    //     socket.broadcast.emit("receive_message", data);
+    //   }
+    // });
+    // socket.on("send_message", (data) => {
+    //   console.log("Message data", data);
+    //   if (data.type === "scheduleDeleted") {
+    //     io.to("availableTeachers").emit("receive_message", data);
+    //   } else {
+    //     socket.broadcast.emit("receive_message", data);
+    //   }
+    // });
+    socket.on("send_message", (data) => {
+      console.log("Message data", data);
+      switch(data.type){
+        case "scheduleDeleted":
+          // Emitting to all clients in 'availableTeachers' except the sender
+          io.to("availableTeachers").emit("receive_message", data);
+          break;
+        default:
+          // Broadcasting to all clients except the sender
+          socket.broadcast.emit("receive_message", data);
+          break;
       }
     });
-
-    // Handle accept operation
-    socket.on("scheduleAccepted",  (data) => {
-      // Emit to all clients
-      io.emit("scheduleAccepted", data);
+    socket.on("joinAvailableTeacherRoom", () => {
+      socket.join('availableTeachers');
+      console.log(`Socket ${socket.handshake.query.userId} joined available teachers' room`);
     });
+    
 
-    // Handle deny operation
-    socket.on("scheduleDenied", (data) => {
-      // Emit to all clients
-      io.emit("scheduleDenied", data);
+    // Handling a teacher joining the room
+    // socket.on("joinAvailableTeacherRoom", ({ teacherId }) => {
+    //   socket.join(`availableTeachers:${teacherId}`);
+    //   // Should probably be just `availableTeachers`
+    //   // socket.join(`availableTeachers`);
+    // });
+
+    // Handling a teacher leaving the room
+    socket.on("leaveAvailableTeacherRoom", ({ teacherId }) => {
+      socket.leave(`availableTeachers:${teacherId}`);
+      // Should probably be just `availableTeachers`
+      // socket.leave(`availableTeachers`);
     });
 
     socket.on("disconnect", () => {
-      console.log("Client disconnected");
+      console.log(`Client ${socket.id} disconnected`);
     });
 
     // Additional Socket.IO event handling...

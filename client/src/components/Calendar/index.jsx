@@ -24,10 +24,17 @@ const Calendar = () => {
   const [calendarView, setCalendarView] = useState("timeGridWeek");
   const calendarRef = useRef(null);
   const socketRef = useRef();
+  useEffect(() => {
+    if (!user) return;
 
+    // Join the "availableTeachers" room specific to the logged in teacher
+
+    return () => {
+      // Leave the room when the component unmounts or on user change
+    };
+  }, [user]);
   // useEffect(() => {
-  //   console.log('user',user);
-  //   // Socket connection setup
+  //   console.log("user", user);
   //   if (!user) return;
 
   //   socketRef.current = io("http://localhost:8001", {
@@ -38,81 +45,105 @@ const Calendar = () => {
 
   //   socketRef.current.on("connect", () => {
   //     console.log("Socket connected");
+  //     // socketRef.current.emit("joinRoom", "availableTeachers");
+  //     // socketRef.current.emit("joinAvailableTeacherRoom");
   //   });
-
-  //   // Socket event handlers
+  //   socketRef.current.emit("joinAvailableTeacherRoom", {
+  //     teacherId: user.userId,
+  //   });
+  //   socketRef.current.on("receive_message", (data) => {
+  //     console.log("Received data:", data);
+  //     if (data.type === "scheduleDeleted") {
+  //       setEvents((prevEvents) =>
+  //         prevEvents.filter((event) => event.id !== data.scheduleId)
+  //       );
+  //     } else if (data.type === "scheduleAccepted") {
+  //       setEvents((prevEvents) =>
+  //         prevEvents.map((event) =>
+  //           event.id === data.scheduleId
+  //             ? { ...event, status: "active", userId: data.teacherId }
+  //             : event
+  //         )
+  //       );
+  //     }
+  //   });
   //   socketRef.current.on("scheduleAccepted", (data) => {
-  //     const { scheduleId, teacherId } = data;
+  //     console.log("Schedule accepted:", data);
+  //     // Update your application state based on the accepted schedule data
   //     setEvents((prevEvents) =>
   //       prevEvents.map((event) =>
-  //         event.id === scheduleId
-  //           ? { ...event, status: "active", userId: teacherId }
+  //         event.id === data.scheduleId
+  //           ? { ...event, status: "active", userId: data.teacherId }
   //           : event
   //       )
   //     );
   //   });
-
-  //   socketRef.current.on("scheduleDeleted", (deletedScheduleId) => {
+  
+  //   socketRef.current.on("scheduleDeleted", (data) => {
+  //     console.log("Schedule deleted:", data);
+  //     // Update your application state by removing the deleted schedule
   //     setEvents((prevEvents) =>
-  //       prevEvents.filter((event) => event.id !== deletedScheduleId)
+  //       prevEvents.filter((event) => event.id !== data.scheduleId)
   //     );
   //   });
-
   //   socketRef.current.on("connect_error", (err) => {
   //     console.error("Socket connection error:", err);
   //   });
 
   //   return () => {
   //     if (socketRef.current) {
+  //       socketRef.current.emit('leaveAvailableTeacherRoom', { teacherId: user.userId });
   //       socketRef.current.disconnect();
   //     }
   //   };
   // }, [user]);
-// Client Side Socket Initialization
-useEffect(() => {
-  console.log('user',user);
-  // Socket connection setup
-  if (!user) return;
-
-  socketRef.current = io("http://localhost:8001", {
-    query: { userId: user.userId },
-    reconnectionAttempts: 5,
-    reconnectionDelay: 3000,
-  });
-
-  socketRef.current.on("connect", () => {
-    console.log("Socket connected");
-  });
-
-  // Socket event handlers
-  socketRef.current.on("scheduleAccepted", (data) => {
-    const { scheduleId, teacherId } = data;
-    setEvents((prevEvents) =>
-      prevEvents.map((event) =>
-        event.id === scheduleId
-          ? { ...event, status: "active", userId: teacherId }
-          : event
-      )
-    );
-  });
-
-  socketRef.current.on("scheduleDeleted", (deletedScheduleId) => {
-    setEvents((prevEvents) =>
-      prevEvents.filter((event) => event.id !== deletedScheduleId)
-    );
-  });
-
-  socketRef.current.on("connect_error", (err) => {
-    console.error("Socket connection error:", err);
-  });
-
-  return () => {
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-    }
-  };
-}, [user]);
-
+  useEffect(() => {
+    console.log("user", user);
+    if (!user) return;
+  
+    socketRef.current = io("http://localhost:8001", {
+      query: { userId: user.userId },
+      reconnectionAttempts: 5,
+      reconnectionDelay: 3000,
+    });
+  
+    socketRef.current.on("connect", () => {
+      console.log("Socket connected");
+      socketRef.current.emit("joinAvailableTeacherRoom", {
+        teacherId: user.userId,
+      });
+    });
+  
+    // Unified message receiver
+    socketRef.current.on("receive_message", (data) => {
+      console.log("Received data:", data);
+      if (data.type === "scheduleDeleted") {
+        setEvents((prevEvents) =>
+          prevEvents.filter((event) => event.id !== data.scheduleId)
+        );
+      } else if (data.type === "scheduleAccepted") {
+        setEvents((prevEvents) =>
+          prevEvents.map((event) =>
+            event.id === data.scheduleId
+              ? { ...event, status: "active", userId: data.teacherId }
+              : event
+          )
+        );
+      }
+    });
+  
+    socketRef.current.on("connect_error", (err) => {
+      console.error("Socket connection error:", err);
+    });
+  
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.emit('leaveAvailableTeacherRoom', { teacherId: user.userId });
+        socketRef.current.disconnect();
+      }
+    };
+  }, [user]);
+  
   const fetchEvents = useCallback(async () => {
     try {
       if (!user) return;
@@ -157,12 +188,14 @@ useEffect(() => {
         };
 
         // Emit socket event to notify other clients
-        socketRef.current.emit(
-          "scheduleAccepted",
-          // scheduleId: selectedEvent.id,
-          updatedEvent
-        );
 
+        const message = {
+          type: "scheduleAccepted",
+          scheduleId: selectedEvent.id,
+          teacherId: user.userId,
+          // Include any additional data if necessary
+        };
+        socketRef.current.emit("scheduleAccepted", message);
         // Update local state immediately
         setEvents((prevEvents) =>
           prevEvents.map((event) =>
@@ -205,9 +238,7 @@ useEffect(() => {
           status: "denied",
           className: "event-denied",
         };
-
-        // Emit socket event to notify other clients
-        socketRef.current.emit("scheduleDeleted", selectedEvent.id);
+        socketRef.current.emit("send_message", updatedEvent);
 
         // Update local state immediately
         setEvents((prevEvents) =>
@@ -364,8 +395,15 @@ useEffect(() => {
           },
         }
       );
+      const message = {
+        type: "scheduleDeleted",
+        scheduleId: selectedEvent.id,
+        schedule: selectedEvent,
+      };
+      socketRef.current.emit("sscheduleDeleted", message);
+      // console.log(socketRef.current.emit("send_message", message));
       setEvents(events.filter((event) => event.id !== selectedEvent.id));
-      socketRef.current.emit("scheduleDeleted", selectedEvent.id);
+      // socketRef.current.emit("scheduleDeleted", selectedEvent.id);
     } catch (error) {
       console.error("Error deleting event:", error);
     }
@@ -395,13 +433,13 @@ useEffect(() => {
       });
 
       const updatedEventData = response.data;
-      if (selectedEvent.id) {
-        // Update existing event
-        socketRef.current.emit("scheduleUpdated", updatedEventData);
-      } else {
-        // Create new event
-        socketRef.current.emit("scheduleCreated", updatedEventData);
-      }
+      // if (selectedEvent.id) {
+      //   // Update existing event
+      //   socketRef.current.emit("scheduleUpdated", updatedEventData);
+      // } else {
+      //   // Create new event
+      //   socketRef.current.emit("scheduleCreated", updatedEventData);
+      // }
       if (selectedEvent.id) {
         // Update existing event
         setEvents(
@@ -425,6 +463,9 @@ useEffect(() => {
     if (user) {
       fetchEvents();
     }
+    return () => {
+      setEvents([]);
+    };
   }, [user, fetchEvents]);
 
   return (

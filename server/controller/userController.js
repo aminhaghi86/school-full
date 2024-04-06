@@ -31,7 +31,7 @@ const Register = async (req, res) => {
 		return res
 			.status(200)
 			.header("Authorization", `Bearer ${token}`)
-			.json({ email, token: token });
+			.json({ email, userId: newUser.id,token: token });
 			
 	} catch (error) {
 		console.log(error);

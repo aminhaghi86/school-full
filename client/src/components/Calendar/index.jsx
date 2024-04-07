@@ -33,88 +33,24 @@ const Calendar = () => {
       // Leave the room when the component unmounts or on user change
     };
   }, [user]);
-  // useEffect(() => {
-  //   console.log("user", user);
-  //   if (!user) return;
-
-  //   socketRef.current = io("http://localhost:8001", {
-  //     query: { userId: user.userId },
-  //     reconnectionAttempts: 5,
-  //     reconnectionDelay: 3000,
-  //   });
-
-  //   socketRef.current.on("connect", () => {
-  //     console.log("Socket connected");
-  //     // socketRef.current.emit("joinRoom", "availableTeachers");
-  //     // socketRef.current.emit("joinAvailableTeacherRoom");
-  //   });
-  //   socketRef.current.emit("joinAvailableTeacherRoom", {
-  //     teacherId: user.userId,
-  //   });
-  //   socketRef.current.on("receive_message", (data) => {
-  //     console.log("Received data:", data);
-  //     if (data.type === "scheduleDeleted") {
-  //       setEvents((prevEvents) =>
-  //         prevEvents.filter((event) => event.id !== data.scheduleId)
-  //       );
-  //     } else if (data.type === "scheduleAccepted") {
-  //       setEvents((prevEvents) =>
-  //         prevEvents.map((event) =>
-  //           event.id === data.scheduleId
-  //             ? { ...event, status: "active", userId: data.teacherId }
-  //             : event
-  //         )
-  //       );
-  //     }
-  //   });
-  //   socketRef.current.on("scheduleAccepted", (data) => {
-  //     console.log("Schedule accepted:", data);
-  //     // Update your application state based on the accepted schedule data
-  //     setEvents((prevEvents) =>
-  //       prevEvents.map((event) =>
-  //         event.id === data.scheduleId
-  //           ? { ...event, status: "active", userId: data.teacherId }
-  //           : event
-  //       )
-  //     );
-  //   });
-  
-  //   socketRef.current.on("scheduleDeleted", (data) => {
-  //     console.log("Schedule deleted:", data);
-  //     // Update your application state by removing the deleted schedule
-  //     setEvents((prevEvents) =>
-  //       prevEvents.filter((event) => event.id !== data.scheduleId)
-  //     );
-  //   });
-  //   socketRef.current.on("connect_error", (err) => {
-  //     console.error("Socket connection error:", err);
-  //   });
-
-  //   return () => {
-  //     if (socketRef.current) {
-  //       socketRef.current.emit('leaveAvailableTeacherRoom', { teacherId: user.userId });
-  //       socketRef.current.disconnect();
-  //     }
-  //   };
-  // }, [user]);
   useEffect(() => {
     console.log("user", user);
     if (!user) return;
-  
+
     socketRef.current = io("http://localhost:8001", {
       query: { userId: user.userId },
       reconnectionAttempts: 5,
       reconnectionDelay: 3000,
     });
-  
+
     socketRef.current.on("connect", () => {
       console.log("Socket connected");
-      socketRef.current.emit("joinAvailableTeacherRoom", {
-        teacherId: user.userId,
-      });
+      // socketRef.current.emit("joinRoom", "availableTeachers");
+      // socketRef.current.emit("joinAvailableTeacherRoom");
     });
-  
-    // Unified message receiver
+    socketRef.current.emit("joinAvailableTeacherRoom", {
+      teacherId: user.userId,
+    });
     socketRef.current.on("receive_message", (data) => {
       console.log("Received data:", data);
       if (data.type === "scheduleDeleted") {
@@ -131,11 +67,29 @@ const Calendar = () => {
         );
       }
     });
+    socketRef.current.on("scheduleAccepted", (data) => {
+      console.log("Schedule accepted:", data);
+      // Update your application state based on the accepted schedule data
+      setEvents((prevEvents) =>
+        prevEvents.map((event) =>
+          event.id === data.scheduleId
+            ? { ...event, status: "active", userId: data.teacherId }
+            : event
+        )
+      );
+    });
   
+    socketRef.current.on("scheduleDeleted", (data) => {
+      console.log("Schedule deleted:", data);
+      // Update your application state by removing the deleted schedule
+      setEvents((prevEvents) =>
+        prevEvents.filter((event) => event.id !== data.scheduleId)
+      );
+    });
     socketRef.current.on("connect_error", (err) => {
       console.error("Socket connection error:", err);
     });
-  
+
     return () => {
       if (socketRef.current) {
         socketRef.current.emit('leaveAvailableTeacherRoom', { teacherId: user.userId });
@@ -143,7 +97,7 @@ const Calendar = () => {
       }
     };
   }, [user]);
-  
+
   const fetchEvents = useCallback(async () => {
     try {
       if (!user) return;

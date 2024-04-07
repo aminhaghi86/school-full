@@ -5,9 +5,9 @@ const {
   createSchedule,
   updateSchedule,
   deleteSchedule,
-  acceptSchedule,
-  denySchedule,
 } = require("../controller/scheduleController");
+const {  acceptSchedule,
+  denySchedule}=require('../controller/notifyTeacher')
 const { requireAuth } = require("../middleware/requireAuth");
 
 const setupRoutes = (app, io) => {

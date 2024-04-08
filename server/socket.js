@@ -13,38 +13,16 @@ exports.initializeSocket = (server) => {
     console.log(socket.id + "A client connected");
     socket.join("availableTeachers");
     const teacherId = socket.handshake.query.teacherId;
-    if (teacherId) {
-      socket.join(`availableTeachers:${teacherId}`);
-    }
-
-    socket.on("leaveRoom", (room) => {
-      socket.leave(room);
-      console.log(`Socket ${socket.id} left room ${room}`);
+    
+    socket.on("scheduleDeleted", (data) => {
+      console.log('data',data);
+      socket.broadcast.emit("schedule_delete_server", data);
     });
-
-    socket.on("send_message", (data) => {
-      console.log("Message data", data);
-      switch (data.type) {
-        case "scheduleDeleted":
-          // Emitting to all clients in 'availableTeachers' except the sender
-          io.to("availableTeachers").emit("receive_message", data);
-          break;
-        default:
-          // Broadcasting to all clients except the sender
-          socket.broadcast.emit("receive_message", data);
-          break;
-      }
-    });
-    socket.on("joinAvailableTeacherRoom", () => {
-      socket.join("availableTeachers");
-      console.log(
-        `Socket ${socket.handshake.query.userId} joined available teachers' room`
-      );
-    });
-
-    // Handling a teacher leaving the room
-    socket.on("leaveAvailableTeacherRoom", ({ teacherId }) => {
-      socket.leave(`availableTeachers:${teacherId}`);
+    socket.on("scheduleReceived", (data) => {
+      // Handle the received schedule data here and update the calendar
+      console.log("Schedule received:", data);
+      // Assuming you have a function to update the calendar in the frontend
+      // updateCalendar(data);
     });
 
     socket.on("disconnect", () => {

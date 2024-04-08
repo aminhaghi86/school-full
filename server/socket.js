@@ -1,7 +1,9 @@
-const { Server } = require("socket.io");
+// New file: socket-manager.js
 let io = null;
+const teacherSockets = {};
 
-exports.initializeSocket = (server) => {
+function initializeSocket(server) {
+  const { Server } = require("socket.io");
   io = new Server(server, {
     cors: {
       origin: "http://localhost:3000",
@@ -10,34 +12,38 @@ exports.initializeSocket = (server) => {
   });
 
   io.on("connection", (socket) => {
-    console.log(socket.id + "A client connected");
-    socket.join("availableTeachers");
+    console.log(`${socket.id} A client connected`);
+
+    // Handling teacher connections with their ids
     const teacherId = socket.handshake.query.teacherId;
-    
-    socket.on("scheduleDeleted", (data) => {
-      console.log('data',data);
-      socket.broadcast.emit("schedule_delete_server", data);
-    });
-    socket.on("scheduleReceived", (data) => {
-      // Handle the received schedule data here and update the calendar
-      console.log("Schedule received:", data);
-      // Assuming you have a function to update the calendar in the frontend
-      // updateCalendar(data);
-    });
+    if (teacherId) {
+      teacherSockets[teacherId] = socket.id;
+      
+      socket.on("disconnect", () => {
+        console.log(`Client ${socket.id} disconnected`);
+        delete teacherSockets[teacherId];
+      });
+    }
 
-    socket.on("disconnect", () => {
-      console.log(`Client ${socket.id} disconnected`);
-    });
-
-    // Additional Socket.IO event handling...
+    // ... rest of your connection handling code ...
   });
 
   return io;
-};
+}
 
-exports.getIO = () => {
+function getIO() {
   if (!io) {
     throw new Error("Socket.io not initialized!");
   }
   return io;
+}
+
+function getTeacherSocketId(teacherId) {
+  return teacherSockets[teacherId];
+}
+
+module.exports = {
+  initializeSocket,
+  getIO,
+  getTeacherSocketId
 };

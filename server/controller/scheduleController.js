@@ -129,6 +129,8 @@ console.log('firstAvailableTeacher',firstAvailableTeacher[0]);
         },
         { transaction: t }
       );
+       await scheduleToDelete.destroy({ transaction: t });
+      io.emit('scheduleDeleted', { scheduleId: id });
       if (firstAvailableTeacher && firstAvailableTeacher.length > 0) {
         const teacherSocketId = getTeacherSocketId(firstAvailableTeacher[0].id);
         if (teacherSocketId) {
@@ -137,13 +139,7 @@ console.log('firstAvailableTeacher',firstAvailableTeacher[0]);
           console.log(`No connected socket found for teacher ID: ${firstAvailableTeacher[0].id}`);
         }
       }
-      // Notify the first available teacher about the new schedule via sockets
-      // io.to(firstAvailableTeacher[0].id).emit("scheduleReceived", {
-      //   ...reassignedSchedule.get({ plain: true }),
-      //   userId: firstAvailableTeacher[0].id,
-      // });
-      await scheduleToDelete.destroy({ transaction: t });
-
+     
       // Respond with success and details of the reassigned schedule
       res.status(200).json({
         message: "Schedule reassigned successfully",

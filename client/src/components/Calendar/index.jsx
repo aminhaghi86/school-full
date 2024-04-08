@@ -76,7 +76,7 @@ const Calendar = () => {
     socketRef.current.on("scheduleReceived", (data) => {
       // Here, you should add the event to the calendar state instead of directly adding it to FullCalendar
       // FullCalendar will re-render automatically when the 'events' state updates.
-
+      console.log('data',data);
       const newEventData = {
         id: data.id,
         title: data.title,

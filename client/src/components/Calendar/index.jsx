@@ -73,10 +73,10 @@ const Calendar = () => {
     //   console.log('New schedule received:', data);
     //   await fetchEvents(); // Fetch all events again, including the new one
     // });
-    socketRef.current.on("scheduleReceived", (data) => {
+    socketRef.current.on("scheduleReceived", async(data) => {
       // Here, you should add the event to the calendar state instead of directly adding it to FullCalendar
       // FullCalendar will re-render automatically when the 'events' state updates.
-      console.log('data',data);
+      console.log("Received new event:", data);
       const newEventData = {
         id: data.id,
         title: data.title,
@@ -84,13 +84,14 @@ const Calendar = () => {
         end: data.end,
         description: data.description,
         course: data.course,
-        extendedProps: {
-          // Add any custom properties that belong in 'extendedProps'
-        },
-        classNames: [`event-${data.status}`],
+        // extendedProps: {
+        //   // Add any custom properties that belong in 'extendedProps'
+        // },
+        // classNames: [`event-${data.status}`],
       };
 
       setEvents((prevEvents) => [...prevEvents, newEventData]);
+      await fetchEvents();
     });
 
     socketRef.current.on("connect", () => {

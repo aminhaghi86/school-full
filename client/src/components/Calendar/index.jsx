@@ -55,7 +55,6 @@ const Calendar = () => {
   useEffect(() => {
     console.log("user", user);
     if (!user) return;
-
     socketRef.current = io("http://localhost:8001", {
       query: { userId: user.userId },
       // reconnectionAttempts: 5,
@@ -64,12 +63,23 @@ const Calendar = () => {
     socketRef.current.on("schedule_delete_server", (data) => {
       console.log("data", data);
     });
+    // socketRef.current.on("scheduleDeleted", (data) => {
+    //   console.log("deleted!", data);
+    //   refetchEvents();
+    // });
     socketRef.current.on("scheduleDeleted", (data) => {
-      console.log("deleted!", data);
+      console.log("Schedule deleted:", data);
+    
+      // Remove the deleted event from the local state
+      setEvents((prevEvents) =>
+        prevEvents.filter((event) => event.id !== data.scheduleId)
+      );
+       fetchEvents()
     });
     socketRef.current.on("scheduleAssigned", (newScheduleData) => {
       console.log("A new schedule has been assigned:", newScheduleData);
 
+      // Update local state immediately with the new event
       setEvents((prevEvents) => [
         ...prevEvents,
         {
@@ -82,14 +92,13 @@ const Calendar = () => {
           className: `event-${newScheduleData.status}`,
         },
       ]);
-      fetchEvents();
     });
     socketRef.current.emit("joinRoom", { roomId: `teacher-${user.id}` });
     socketRef.current.on("connect", () => {
-      console.log('user');
+      console.log("user");
       console.log("Socket connected");
       socketRef.current.emit("registerTeacher", { teacherId: user.userId });
-      console.log("aa11111111", user.id);
+      console.log("USERID", user.userId);
       // socketRef.current.emit("identify", user.id);
     });
 
@@ -99,6 +108,17 @@ const Calendar = () => {
       setEvents((prevEvents) =>
         prevEvents.filter((event) => event.id !== data.scheduleId)
       );
+    });
+    socketRef.current.on("message", (message) => {
+      console.log("Message received:", message);
+
+      if (message.type === "scheduleDeleted") {
+        setEvents((prevEvents) =>
+          prevEvents.filter((event) => event.id !== message.scheduleId)
+        );
+      }
+
+      // Add other conditions as needed based on the types of messages you are sending
     });
     socketRef.current.on("connect_error", (err) => {
       console.error("Socket connection error:", err);
@@ -112,6 +132,7 @@ const Calendar = () => {
         socketRef.current.off("scheduleDeleted");
         socketRef.current.off("scheduleAssigned");
         socketRef.current.off("connect_error");
+        socketRef.current.off("message");
         socketRef.current.disconnect();
       }
     };

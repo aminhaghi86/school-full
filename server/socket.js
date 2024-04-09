@@ -14,9 +14,9 @@ const initializeSocket = (server) => {
     console.log(`${socket.id} client connected`);
 
     // Register teacher with socket
-    socket.on("registerTeacher", (teacherId) => {
+    socket.on("registerTeacher", ({ teacherId }) => {
       console.log(
-        `Registering teacher with id: ${teacherId.teacherId} and socket id: ${socket.id}`
+        `Registering teacher with id: ${teacherId} and socket id: ${socket.id}`
       );
       // Associate the socket with the teacher ID
       teacherSockets[teacherId] = socket.id;
@@ -44,8 +44,18 @@ const initializeSocket = (server) => {
     });
 
     socket.on("scheduleDeleted", (data) => {
-      console.log("data", data);
-      socket.broadcast.emit("schedule_delete_server", data);
+      console.log("Schedule deleted:", data);
+      // Broadcast to all clients except sender
+      socket.broadcast.emit("scheduleDeleted", data);
+
+      // Send a message to the specific teacher if the teacherId is part of the data object
+      if (data.teacherId) {
+        const message = {
+          type: "scheduleDeleted",
+          scheduleId: data.scheduleId,
+        };
+        sendToTeacher(data.teacherId, message);
+      }
     });
 
     socket.on("scheduleReceived", (data) => {

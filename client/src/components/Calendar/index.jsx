@@ -88,7 +88,7 @@ const Calendar = () => {
     socketRef.current.on("connect", () => {
       console.log('user');
       console.log("Socket connected");
-      socketRef.current.emit("registerTeacher",  user.userId );
+      socketRef.current.emit("registerTeacher", { teacherId: user.userId });
       console.log("aa11111111", user.id);
       // socketRef.current.emit("identify", user.id);
     });

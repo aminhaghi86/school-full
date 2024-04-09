@@ -16,7 +16,7 @@ const initializeSocket = (server) => {
     // Register teacher with socket
     socket.on("registerTeacher", (teacherId) => {
       console.log(
-        `Registering teacher with id: ${teacherId} and socket id: ${socket.id}`
+        `Registering teacher with id: ${teacherId.teacherId} and socket id: ${socket.id}`
       );
       // Associate the socket with the teacher ID
       teacherSockets[teacherId] = socket.id;

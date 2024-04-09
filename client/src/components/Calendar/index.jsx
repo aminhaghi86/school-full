@@ -6,6 +6,8 @@ import interactionPlugin from "@fullcalendar/interaction";
 import Modal from "./Modal";
 import axios from "axios";
 import { useAuthContext } from "../../hooks/useAuthContext";
+import io from "socket.io-client";
+import "./index.css";
 
 const Calendar = () => {
   const { user } = useAuthContext();
@@ -21,6 +23,205 @@ const Calendar = () => {
   const [showModal, setShowModal] = useState(false);
   const [calendarView, setCalendarView] = useState("timeGridWeek");
   const calendarRef = useRef(null);
+  const socketRef = useRef();
+  useEffect(() => {
+    if (!user) return;
+
+    // Join the "availableTeachers" room specific to the logged in teacher
+
+    return () => {
+      // Leave the room when the component unmounts or on user change
+    };
+  }, [user]);
+  const fetchEvents = useCallback(async () => {
+    try {
+      if (!user) return;
+
+      const response = await axios.get(`${process.env.REACT_APP_ENDPOINT}`, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          "Cache-Control": "no-cache",
+        },
+      });
+      const fetchedEvents = response.data.map((event) => ({
+        ...event,
+        className: `event-${event.status}`,
+      }));
+      setEvents(fetchedEvents);
+    } catch (error) {
+      console.log(error);
+    }
+  }, [user]);
+  useEffect(() => {
+    console.log("user", user);
+    if (!user) return;
+    socketRef.current = io("http://localhost:8001", {
+      query: { userId: user.userId },
+    });
+    socketRef.current.on("schedule_delete_server", (data) => {
+      console.log("data", data);
+    });
+    socketRef.current.on("scheduleDeleted", (data) => {
+      console.log("Schedule deleted:", data);
+
+      // Remove the deleted event from the local state
+      setEvents((prevEvents) =>
+        prevEvents.filter((event) => event.id !== data.scheduleId)
+      );
+      fetchEvents();
+    });
+    socketRef.current.on("scheduleAssigned", (newScheduleData) => {
+      console.log("A new schedule has been assigned:", newScheduleData);
+
+      // Update local state immediately with the new event
+      setEvents((prevEvents) => [
+        ...prevEvents,
+        {
+          id: newScheduleData.id,
+          title: newScheduleData.title,
+          start: newScheduleData.start,
+          end: newScheduleData.end,
+          description: newScheduleData.description,
+          course: newScheduleData.course,
+          className: `event-${newScheduleData.status}`,
+        },
+      ]);
+    });
+    socketRef.current.emit("joinRoom", { roomId: `teacher-${user.id}` });
+    socketRef.current.on("connect", () => {
+      console.log("user");
+      console.log("Socket connected");
+      socketRef.current.emit("registerTeacher", { teacherId: user.userId });
+      console.log("USERID", user.userId);
+      // socketRef.current.emit("identify", user.id);
+    });
+
+    socketRef.current.on("scheduleDeleted", (data) => {
+      console.log("Schedule deleted:", data);
+      // Update your application state by removing the deleted schedule
+      setEvents((prevEvents) =>
+        prevEvents.filter((event) => event.id !== data.scheduleId)
+      );
+    });
+    socketRef.current.on("message", (message) => {
+      console.log("Message received:", message);
+
+      if (message.type === "scheduleDeleted") {
+        setEvents((prevEvents) =>
+          prevEvents.filter((event) => event.id !== message.scheduleId)
+        );
+      }
+
+      // Add other conditions as needed based on the types of messages you are sending
+    });
+    socketRef.current.on("connect_error", (err) => {
+      console.error("Socket connection error:", err);
+    });
+
+    return () => {
+      socketRef.current.emit("leaveRoom", { roomId: `teacher-${user.id}` });
+      if (socketRef.current) {
+        socketRef.current.off("connect");
+        socketRef.current.off("schedule_delete_server");
+        socketRef.current.off("scheduleDeleted");
+        socketRef.current.off("scheduleAssigned");
+        socketRef.current.off("connect_error");
+        socketRef.current.off("message");
+        socketRef.current.disconnect();
+      }
+    };
+  }, [user, socketRef, fetchEvents]);
+
+  const handleAcceptEvent = async () => {
+    if (!user || !selectedEvent) {
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}/accept`,
+        { scheduleId: selectedEvent.id },
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        const updatedEvent = {
+          ...selectedEvent,
+          status: "accepted",
+          className: "event-accepted",
+        };
+
+        // Emit socket event to notify other clients
+
+        const message = {
+          type: "scheduleAccepted",
+          scheduleId: selectedEvent.id,
+          teacherId: user.userId,
+          // Include any additional data if necessary
+        };
+        socketRef.current.emit("scheduleAccepted", message);
+        // Update local state immediately
+        setEvents((prevEvents) =>
+          prevEvents.map((event) =>
+            event.id === selectedEvent.id ? updatedEvent : event
+          )
+        );
+      }
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        alert("This schedule has already been accepted by another teacher.");
+        fetchEvents();
+      } else {
+        console.error("Error accepting event:", error);
+      }
+    }
+
+    setSelectedEvent(null);
+    setShowModal(false);
+  };
+
+  const handleDenyEvent = async () => {
+    if (!user || !selectedEvent) {
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}/deny`,
+        { scheduleId: selectedEvent.id },
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        const updatedEvent = {
+          ...selectedEvent,
+          status: "denied",
+          className: "event-denied",
+        };
+        socketRef.current.emit("send_message", updatedEvent);
+
+        // Update local state immediately
+        setEvents((prevEvents) =>
+          prevEvents.map((event) =>
+            event.id === selectedEvent.id ? updatedEvent : event
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error denying event:", error);
+    }
+
+    setSelectedEvent(null);
+    setShowModal(false);
+  };
 
   const handleSelect = (selectInfo) => {
     setSelectedEvent({
@@ -32,87 +233,6 @@ const Calendar = () => {
       course: "",
     });
     setShowModal(true);
-  };
-
-  // const handleSaveEvent = async () => {
-  //   if (!user || !selectedEvent) {
-  //     return;
-  //   }
-
-  //   try {
-  //     const url = selectedEvent.id
-  //       ? `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`
-  //       : `${process.env.REACT_APP_ENDPOINT}`;
-
-  //     const method = selectedEvent.id ? "PUT" : "POST";
-
-  //     const response = await axios({
-  //       method,
-  //       url,
-  //       data: selectedEvent,
-  //       headers: {
-  //         Authorization: `Bearer ${user.token}`,
-  //       },
-  //     });
-
-  //     const updatedEventData = response.data;
-  //     if (selectedEvent.id) {
-  //       // Update existing event
-  //       setEvents(
-  //         events.map((event) =>
-  //           event.id === updatedEventData.id ? updatedEventData : event
-  //         )
-  //       );
-  //     } else {
-  //       // Create new event
-  //       setEvents([...events, updatedEventData]);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error saving event:", error);
-  //   }
-
-  //   setSelectedEvent(null);
-  //   setShowModal(false);
-  // };
-  const handleSaveEvent = async () => {
-    if (!user || !selectedEvent || !selectedEvent.course) {
-      return;
-    }
-
-    try {
-      const url = selectedEvent.id
-        ? `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`
-        : `${process.env.REACT_APP_ENDPOINT}`;
-
-      const method = selectedEvent.id ? "PUT" : "POST";
-
-      const response = await axios({
-        method,
-        url,
-        data: selectedEvent,
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      });
-
-      const updatedEventData = response.data;
-      if (selectedEvent.id) {
-        // Update existing event
-        setEvents(
-          events.map((event) =>
-            event.id === updatedEventData.id ? updatedEventData : event
-          )
-        );
-      } else {
-        // Create new event
-        setEvents([...events, updatedEventData]);
-      }
-    } catch (error) {
-      console.error("Error saving event:", error);
-    }
-
-    setSelectedEvent(null);
-    setShowModal(false);
   };
 
   const handleEditEvent = (clickInfo) => {
@@ -132,28 +252,30 @@ const Calendar = () => {
     }
   };
 
-  const handleDeleteEvent = async () => {
-    if (!user || !selectedEvent) {
-      return;
+  const handleInputChange = (e, field) => {
+    if (selectedEvent) {
+      const updatedEvent = {
+        ...selectedEvent,
+        [field]: e.target.value,
+      };
+      setSelectedEvent(updatedEvent);
     }
+  };
 
-    try {
-      await axios.delete(
-        `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        }
-      );
-
-      setEvents(events.filter((event) => event.id !== selectedEvent.id));
-    } catch (error) {
-      console.error("Error deleting event:", error);
+  const changeView = (view) => {
+    if (view === "today") {
+      let calendar = calendarRef.current.getApi();
+      calendar.changeView("timeGridDay");
+      calendar.gotoDate(new Date());
+    } else {
+      let calendar = calendarRef.current.getApi();
+      calendar.changeView(view);
+      setCalendarView(view);
     }
+  };
 
-    setSelectedEvent(null);
-    setShowModal(false);
+  const handleViewChange = (view, currentView) => {
+    setCalendarView(currentView.title);
   };
 
   const handleEventDrop = async (dropInfo) => {
@@ -208,7 +330,7 @@ const Calendar = () => {
         {
           headers: {
             Authorization: `Bearer ${user.token}`,
-            cache: 'no-cache'
+            cache: "no-cache",
           },
         }
       );
@@ -226,55 +348,90 @@ const Calendar = () => {
       console.error("Error updating event:", error);
     }
   };
-
-  const handleInputChange = (e, field) => {
-    if (selectedEvent) {
-      const updatedEvent = {
-        ...selectedEvent,
-        [field]: e.target.value,
-      };
-      setSelectedEvent(updatedEvent);
-    }
-  };
-
-  const changeView = (view) => {
-    if (view === "today") {
-      let calendar = calendarRef.current.getApi();
-      calendar.changeView("timeGridDay");
-      calendar.gotoDate(new Date());
-    } else {
-      console.log("Changing view to:", view);
-      let calendar = calendarRef.current.getApi();
-      calendar.changeView(view);
-      console.log("New calendar view:", calendar.view.title);
-      setCalendarView(view);
-    }
-  };
-
-  const handleViewChange = (view, currentView) => {
-    setCalendarView(currentView.title);
-    console.log(view);
-  };
-  const fetchEvents = useCallback(async () => {
+  const handleDeleteEvent = async () => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_ENDPOINT}`, {
+      if (!user || !selectedEvent) {
+        return;
+      }
+
+      // Send a request to delete the event
+      await axios.delete(
+        `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
+      // Emit a socket event to notify the server about the event deletion
+      const message = {
+        type: "scheduleDeleted",
+        scheduleId: selectedEvent.id,
+        schedule: selectedEvent,
+      };
+      socketRef.current.emit("scheduleDeleted", message);
+
+      // Update the UI by removing the deleted event from the events array
+      setEvents(events.filter((event) => event.id !== selectedEvent.id));
+    } catch (error) {
+      console.error("Error deleting event:", error);
+    }
+
+    // Reset selectedEvent and hide the modal
+    setSelectedEvent(null);
+    setShowModal(false);
+  };
+
+  const handleSaveEvent = async () => {
+    if (!user || !selectedEvent || !selectedEvent.course) {
+      return;
+    }
+
+    try {
+      const url = selectedEvent.id
+        ? `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`
+        : `${process.env.REACT_APP_ENDPOINT}`;
+
+      const method = selectedEvent.id ? "PUT" : "POST";
+
+      const response = await axios({
+        method,
+        url,
+        data: selectedEvent,
         headers: {
           Authorization: `Bearer ${user.token}`,
-          "Cache-Control": "no-cache"
         },
       });
-      setEvents(response.data);
+
+      const updatedEventData = response.data;
+      if (selectedEvent.id) {
+        // Update existing event
+        setEvents(
+          events.map((event) =>
+            event.id === updatedEventData.id ? updatedEventData : event
+          )
+        );
+      } else {
+        // Create new event
+        setEvents([...events, updatedEventData]);
+      }
     } catch (error) {
-      console.log(error);
+      console.error("Error saving event:", error);
     }
-  }, [user]);
+
+    setSelectedEvent(null);
+    setShowModal(false);
+  };
 
   useEffect(() => {
     if (user) {
       fetchEvents();
     }
+    return () => {
+      setEvents([]);
+    };
   }, [user, fetchEvents]);
-  // Only user dependency here
 
   return (
     <div style={{ margin: "10rem 0" }}>
@@ -284,6 +441,8 @@ const Calendar = () => {
         <button onClick={() => changeView("dayGridMonth")}>Month</button>
       </div>
       <FullCalendar
+        slotMinTime="08:00:00"
+        slotMaxTime="17:00:00"
         nowIndicator={true}
         now={new Date()}
         ref={calendarRef}
@@ -310,19 +469,23 @@ const Calendar = () => {
         select={handleSelect}
         events={events}
         eventClick={handleEditEvent}
-        editable={true} // Enable drag and drop
-        eventDrop={handleEventDrop} // Handle event drop
-        eventResize={handleEventResize} // Handle event resize
+        editable={true}
+        eventDrop={handleEventDrop}
+        eventResize={handleEventResize}
       />
       {showModal && (
-        <Modal onClose={() => setShowModal(false)} onDelete={handleDeleteEvent}>
+        <Modal
+          onClose={() => setShowModal(false)}
+          onDelete={handleDeleteEvent}
+          onAccept={handleAcceptEvent}
+          onDeny={handleDenyEvent}
+        >
           <h2>
             {selectedEvent.start} - {selectedEvent.end}
           </h2>
           <input
             type="text"
             placeholder="Event Name"
-            // Set value from selectedEvent.title (assuming it's a state variable)
             value={selectedEvent.title}
             onChange={(e) => handleInputChange(e, "title")}
           />
@@ -351,6 +514,16 @@ const Calendar = () => {
           <button className="save-button" onClick={handleSaveEvent}>
             Save Event
           </button>
+          {selectedEvent.status === "active" && (
+            <>
+              <button className="accept-button" onClick={handleAcceptEvent}>
+                Accept Event
+              </button>
+              <button className="deny-button" onClick={handleDenyEvent}>
+                Deny Event
+              </button>
+            </>
+          )}
         </Modal>
       )}
     </div>

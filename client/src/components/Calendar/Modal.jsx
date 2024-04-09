@@ -1,7 +1,7 @@
 import React from "react";
 import "./modal.css";
 
-const Modal = ({ onClose, onDelete, children }) => {
+const Modal = ({ onClose, onDelete, children,onAccept,onDeny }) => {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -16,6 +16,8 @@ const Modal = ({ onClose, onDelete, children }) => {
           <button className="save-button" onClick={onClose}>
             Close
           </button>
+          {onAccept && <button onClick={onAccept}>Accept</button>}
+          {onDeny && <button onClick={onDeny}>Deny</button>}
         </div>
       </div>
     </div>

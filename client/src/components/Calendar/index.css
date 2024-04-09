@@ -1,0 +1,23 @@
+.event-accepted {
+    background-color: #0443ef; /* Green for accepted events */
+  }
+  
+  .event-denied {
+    background-color: #ffcdd2; /* Red for denied events */
+  }
+  
+  .event-pending {
+    background-color: #9ccb36; /* Yellow for pending events */
+  }
+
+  .accept-button {
+    background-color: #188cb9; /* Green */
+    color: white;
+    /* Add other styling as needed */
+  }
+  
+  .deny-button {
+    background-color: #f44336; /* Red */
+    color: white;
+    /* Add other styling as needed */
+  }

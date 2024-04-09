@@ -6,9 +6,11 @@ const {
   updateSchedule,
   deleteSchedule,
 } = require("../controller/scheduleController");
+const {  acceptSchedule,
+  denySchedule}=require('../controller/notifyTeacher')
 const { requireAuth } = require("../middleware/requireAuth");
 
-const setupRoutes = (app) => {
+const setupRoutes = (app, io) => {
   const router = express.Router();
 
   // Apply authentication middleware to all routes in this router
@@ -20,6 +22,8 @@ const setupRoutes = (app) => {
   router.post("/", createSchedule);
   router.put("/:id", updateSchedule);
   router.delete("/:id", deleteSchedule);
+  router.post("/:id/accept", acceptSchedule);
+  router.post("/:id/deny", denySchedule);
 
   // Mount the router at /schedule
   app.use("/schedule", router);

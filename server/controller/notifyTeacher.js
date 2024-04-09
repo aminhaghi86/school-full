@@ -1,4 +1,5 @@
-const {User,  Notification, sequelize,Schedule } =require('../model/task');
+const { User, Notification, sequelize, Schedule } = require("../model/task");
+const { getIO } = require("../socket");
 const { Op } = require("sequelize");
 const acceptSchedule = async (req, res) => {
   const { scheduleId } = req.body;

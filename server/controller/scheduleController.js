@@ -116,6 +116,7 @@ const deleteSchedule = async (req, res) => {
           description: scheduleToDelete.description,
           course: scheduleToDelete.course,
           userId: firstAvailableTeacher[0].id,
+          status:"pending"
         }, { transaction: t });
 
         // Notify the first available teacher about the new schedule assignment

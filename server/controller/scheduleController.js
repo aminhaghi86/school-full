@@ -1,5 +1,5 @@
 const { Schedule } = require("../model/task");
-const { getIO,getTeacherSocketId } = require("../socket");
+const { getIO,getTeacherSocketId,sendToTeacher } = require("../socket");
 const { findAllAvailableTeachers } = require("./notifyTeacher");
 const { sequelize } = require("../model/task");
 const getAllSchedules = async (req, res) => {
@@ -82,7 +82,7 @@ const updateSchedule = async (req, res) => {
 
 const deleteSchedule = async (req, res) => {
   try {
-    const { id } = req.params; // Assuming 'id' is the schedule ID to delete
+    const { id } = req.params;
     const io = getIO();
 
     // Fetch the event to be deleted
@@ -93,64 +93,52 @@ const deleteSchedule = async (req, res) => {
 
     // Check permission
     if (scheduleToDelete.userId !== req.user.id) {
-      return res
-        .status(403)
-        .json({ message: "Not authorized to delete this schedule" });
+      return res.status(403).json({ message: "Not authorized to delete this schedule" });
     }
 
-    // Extract relevant fields
+    // Extract relevant fields for reassigning
     const { start, end, userId: excludedTeacherId } = scheduleToDelete;
 
     // Find an available teacher before deleting the schedule
-    const firstAvailableTeacher = await findAllAvailableTeachers(
-      start,
-      end,
-      excludedTeacherId
-    );
-
-    if (!firstAvailableTeacher) {
-      return res.status(422).json({ message: "No available teacher found" });
-    }
-console.log('firstAvailableTeacher',firstAvailableTeacher[0]);
+    const firstAvailableTeacher = await findAllAvailableTeachers(start, end, excludedTeacherId);
+    
     // Perform the transaction
     await sequelize.transaction(async (t) => {
       // Delete the existing schedule
-     
+      await scheduleToDelete.destroy({ transaction: t });
 
-      // Create a new schedule for the first available teacher
-      const reassignedSchedule = await Schedule.create(
-        {
+      if (firstAvailableTeacher && firstAvailableTeacher.length > 0) {
+        // Create a new schedule for the first available teacher
+        const reassignedSchedule = await Schedule.create({
           start,
           end,
           title: scheduleToDelete.title,
           description: scheduleToDelete.description,
           course: scheduleToDelete.course,
           userId: firstAvailableTeacher[0].id,
-        },
-        { transaction: t }
-      );
-       await scheduleToDelete.destroy({ transaction: t });
-      io.emit('scheduleDeleted', { scheduleId: id });
-      if (firstAvailableTeacher && firstAvailableTeacher.length > 0) {
-        const teacherSocketId = getTeacherSocketId(firstAvailableTeacher[0].id);
-        if (teacherSocketId) {
-          io.to(teacherSocketId).emit("scheduleReceived", reassignedSchedule.get({ plain: true }));
-        } else {
-          console.log(`No connected socket found for teacher ID: ${firstAvailableTeacher[0].id}`);
-        }
+        }, { transaction: t });
+
+        // Notify the first available teacher about the new schedule assignment
+        sendToTeacher(firstAvailableTeacher[0].id, "You have been assigned a new schedule.");
+
+        // Respond with success and details of the reassigned schedule
+        res.status(200).json({
+          message: "Schedule reassigned successfully",
+          schedule: reassignedSchedule,
+        });
+      } else {
+        res.status(422).json({ message: "No available teacher found" });
       }
-     
-      // Respond with success and details of the reassigned schedule
-      res.status(200).json({
-        message: "Schedule reassigned successfully",
-        schedule: reassignedSchedule,
-      });
+
+      // Emit event that the schedule was deleted
+      io.emit('scheduleDeleted', { scheduleId: id });
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 
 module.exports = {

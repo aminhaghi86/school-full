@@ -58,44 +58,39 @@ const Calendar = () => {
 
     socketRef.current = io("http://localhost:8001", {
       query: { userId: user.userId },
-      reconnectionAttempts: 5,
-      reconnectionDelay: 3000,
+      // reconnectionAttempts: 5,
+      // reconnectionDelay: 3000,
     });
     socketRef.current.on("schedule_delete_server", (data) => {
       console.log("data", data);
     });
-    // socketRef.current.on("scheduleReceived", (data) => {
-    //   console.log('data',data);
-    //   // Update calendar with received event data
-    //   setEvents((prevEvents) => [...prevEvents, data]);
-    // });
-    // socketRef.current.on("scheduleReceived", async (data) => {
-    //   console.log('New schedule received:', data);
-    //   await fetchEvents(); // Fetch all events again, including the new one
-    // });
-    socketRef.current.on("scheduleReceived", async(data) => {
-      // Here, you should add the event to the calendar state instead of directly adding it to FullCalendar
-      // FullCalendar will re-render automatically when the 'events' state updates.
-      console.log("Received new event:", data);
-      const newEventData = {
-        id: data.id,
-        title: data.title,
-        start: data.start,
-        end: data.end,
-        description: data.description,
-        course: data.course,
-        // extendedProps: {
-        //   // Add any custom properties that belong in 'extendedProps'
-        // },
-        // classNames: [`event-${data.status}`],
-      };
-
-      setEvents((prevEvents) => [...prevEvents, newEventData]);
-      await fetchEvents();
+    socketRef.current.on("scheduleDeleted", (data) => {
+      console.log("deleted!", data);
     });
+    socketRef.current.on("scheduleAssigned", (newScheduleData) => {
+      console.log("A new schedule has been assigned:", newScheduleData);
 
+      setEvents((prevEvents) => [
+        ...prevEvents,
+        {
+          id: newScheduleData.id,
+          title: newScheduleData.title,
+          start: newScheduleData.start,
+          end: newScheduleData.end,
+          description: newScheduleData.description,
+          course: newScheduleData.course,
+          className: `event-${newScheduleData.status}`,
+        },
+      ]);
+      fetchEvents();
+    });
+    socketRef.current.emit("joinRoom", { roomId: `teacher-${user.id}` });
     socketRef.current.on("connect", () => {
+      console.log('user');
       console.log("Socket connected");
+      socketRef.current.emit("registerTeacher",  user.userId );
+      console.log("aa11111111", user.id);
+      // socketRef.current.emit("identify", user.id);
     });
 
     socketRef.current.on("scheduleDeleted", (data) => {
@@ -110,9 +105,13 @@ const Calendar = () => {
     });
 
     return () => {
+      socketRef.current.emit("leaveRoom", { roomId: `teacher-${user.id}` });
       if (socketRef.current) {
-        socketRef.current.off("scheduleReceived");
+        socketRef.current.off("connect");
+        socketRef.current.off("schedule_delete_server");
         socketRef.current.off("scheduleDeleted");
+        socketRef.current.off("scheduleAssigned");
+        socketRef.current.off("connect_error");
         socketRef.current.disconnect();
       }
     };
@@ -334,37 +333,6 @@ const Calendar = () => {
       console.error("Error updating event:", error);
     }
   };
-
-  // const handleDeleteEvent = async () => {
-  //   try {
-  //     if (!user || !selectedEvent) {
-  //       return;
-  //     }
-
-  //     await axios.delete(
-  //       `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`,
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${user.token}`,
-  //         },
-  //       }
-  //     );
-  //     const message = {
-  //       type: "scheduleDeleted",
-  //       scheduleId: selectedEvent.id,
-  //       schedule: selectedEvent,
-  //     };
-  //     socketRef.current.emit("scheduleDeleted", message);
-  //     // console.log(socketRef.current.emit("send_message", message));
-  //     setEvents(events.filter((event) => event.id !== selectedEvent.id));
-  //     // socketRef.current.emit("scheduleDeleted", selectedEvent.id);
-  //   } catch (error) {
-  //     console.error("Error deleting event:", error);
-  //   }
-
-  //   setSelectedEvent(null);
-  //   setShowModal(false);
-  // };
   const handleDeleteEvent = async () => {
     try {
       if (!user || !selectedEvent) {
@@ -422,13 +390,6 @@ const Calendar = () => {
       });
 
       const updatedEventData = response.data;
-      // if (selectedEvent.id) {
-      //   // Update existing event
-      //   socketRef.current.emit("scheduleUpdated", updatedEventData);
-      // } else {
-      //   // Create new event
-      //   socketRef.current.emit("scheduleCreated", updatedEventData);
-      // }
       if (selectedEvent.id) {
         // Update existing event
         setEvents(

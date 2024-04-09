@@ -120,7 +120,7 @@ const deleteSchedule = async (req, res) => {
 
         // Notify the first available teacher about the new schedule assignment
         sendToTeacher(firstAvailableTeacher[0].id, "You have been assigned a new schedule.");
-
+        io.emit('scheduleDeleted', { scheduleId: id });
         // Respond with success and details of the reassigned schedule
         res.status(200).json({
           message: "Schedule reassigned successfully",

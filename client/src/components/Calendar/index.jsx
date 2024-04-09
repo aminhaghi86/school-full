@@ -57,24 +57,18 @@ const Calendar = () => {
     if (!user) return;
     socketRef.current = io("http://localhost:8001", {
       query: { userId: user.userId },
-      // reconnectionAttempts: 5,
-      // reconnectionDelay: 3000,
     });
     socketRef.current.on("schedule_delete_server", (data) => {
       console.log("data", data);
     });
-    // socketRef.current.on("scheduleDeleted", (data) => {
-    //   console.log("deleted!", data);
-    //   refetchEvents();
-    // });
     socketRef.current.on("scheduleDeleted", (data) => {
       console.log("Schedule deleted:", data);
-    
+
       // Remove the deleted event from the local state
       setEvents((prevEvents) =>
         prevEvents.filter((event) => event.id !== data.scheduleId)
       );
-       fetchEvents()
+      fetchEvents();
     });
     socketRef.current.on("scheduleAssigned", (newScheduleData) => {
       console.log("A new schedule has been assigned:", newScheduleData);

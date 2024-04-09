@@ -124,44 +124,9 @@ const findAllAvailableTeachers = async (start, end) => {
   }
 };
 
-const sendNotification = async (teacher, notificationDetails) => {
-  console.log(`Sending notification to teacher with ID: ${teacher.id}`);
-  console.log(
-    `Sending notification notificationDetails: ${notificationDetails}`
-  );
-  try {
-    const notification = await Notification.create({
-      userId: teacher.id,
-      message: notificationDetails.message,
-      scheduleId: notificationDetails.scheduleId,
-    });
-
-    console.log(
-      `Notification created with ID: ${notification.id} for teacher with ID: ${teacher.id}`
-    );
-  } catch (error) {
-    console.error(
-      `Failed to send notification to teacher with ID: ${teacher.id}`,
-      error
-    );
-  }
-};
-
-const notifyAvailableTeachers = async (teachers, pendingSchedules) => {
-  for (const teacher of teachers) {
-    for (const pendingSchedule of pendingSchedules) {
-      if (pendingSchedule.userId === teacher.id) {
-        await sendNotification(teacher, {
-          message: `New available schedule from ${pendingSchedule.start} to ${pendingSchedule.end}. Do you want to accept?`,
-          scheduleId: pendingSchedule.id,
-        });
-      }
-    }
-  }
-};
 
 module.exports = {
-  notifyAvailableTeachers,
+  // notifyAvailableTeachers,
   findAllAvailableTeachers,
   denySchedule,
   acceptSchedule,

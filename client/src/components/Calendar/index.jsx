@@ -6,7 +6,6 @@ import interactionPlugin from "@fullcalendar/interaction";
 import Modal from "./Modal";
 import axios from "axios";
 import { useAuthContext } from "../../hooks/useAuthContext";
-import io from "socket.io-client";
 import "./index.css";
 
 const Calendar = () => {
@@ -23,15 +22,10 @@ const Calendar = () => {
   const [showModal, setShowModal] = useState(false);
   const [calendarView, setCalendarView] = useState("timeGridWeek");
   const calendarRef = useRef(null);
-  const socketRef = useRef();
   useEffect(() => {
     if (!user) return;
 
-    // Join the "availableTeachers" room specific to the logged in teacher
-
-    return () => {
-      // Leave the room when the component unmounts or on user change
-    };
+    return () => {};
   }, [user]);
   const fetchEvents = useCallback(async () => {
     try {
@@ -52,85 +46,6 @@ const Calendar = () => {
       console.log(error);
     }
   }, [user]);
-  useEffect(() => {
-    console.log("user", user);
-    if (!user) return;
-    socketRef.current = io("http://localhost:8001", {
-      query: { userId: user.userId },
-    });
-    socketRef.current.on("schedule_delete_server", (data) => {
-      console.log("data", data);
-    });
-    socketRef.current.on("scheduleDeleted", (data) => {
-      console.log("Schedule deleted:", data);
-
-      // Remove the deleted event from the local state
-      setEvents((prevEvents) =>
-        prevEvents.filter((event) => event.id !== data.scheduleId)
-      );
-      fetchEvents();
-    });
-    socketRef.current.on("scheduleAssigned", (newScheduleData) => {
-      console.log("A new schedule has been assigned:", newScheduleData);
-
-      // Update local state immediately with the new event
-      setEvents((prevEvents) => [
-        ...prevEvents,
-        {
-          id: newScheduleData.id,
-          title: newScheduleData.title,
-          start: newScheduleData.start,
-          end: newScheduleData.end,
-          description: newScheduleData.description,
-          course: newScheduleData.course,
-          className: `event-${newScheduleData.status}`,
-        },
-      ]);
-    });
-    socketRef.current.emit("joinRoom", { roomId: `teacher-${user.id}` });
-    socketRef.current.on("connect", () => {
-      console.log("user");
-      console.log("Socket connected");
-      socketRef.current.emit("registerTeacher", { teacherId: user.userId });
-      console.log("USERID", user.userId);
-      // socketRef.current.emit("identify", user.id);
-    });
-
-    socketRef.current.on("scheduleDeleted", (data) => {
-      console.log("Schedule deleted:", data);
-      // Update your application state by removing the deleted schedule
-      setEvents((prevEvents) =>
-        prevEvents.filter((event) => event.id !== data.scheduleId)
-      );
-    });
-    socketRef.current.on("message", (message) => {
-      console.log("Message received:", message);
-
-      if (message.type === "scheduleDeleted") {
-        setEvents((prevEvents) =>
-          prevEvents.filter((event) => event.id !== message.scheduleId)
-        );
-      }
-
-      // Add other conditions as needed based on the types of messages you are sending
-    });
-    socketRef.current.on("connect_error", (err) => {
-      console.error("Socket connection error:", err);
-    });
-
-    return () => {
-      socketRef.current.emit("leaveRoom", { roomId: `teacher-${user.id}` });
-      if (socketRef.current) {
-        socketRef.current.off("connect");
-        socketRef.current.off("schedule_delete_server");
-        socketRef.current.off("scheduleDeleted");
-        socketRef.current.off("scheduleAssigned");
-        socketRef.current.off("connect_error");
-        socketRef.current.off("message");
-        socketRef.current.disconnect();
-      }
-    };
-  }, [user, socketRef, fetchEvents]);
 
   const handleAcceptEvent = async () => {
     if (!user || !selectedEvent) {
@@ -155,15 +70,6 @@ const Calendar = () => {
           className: "event-accepted",
         };
 
-        // Emit socket event to notify other clients
-
-        const message = {
-          type: "scheduleAccepted",
-          scheduleId: selectedEvent.id,
-          teacherId: user.userId,
-          // Include any additional data if necessary
-        };
-        socketRef.current.emit("scheduleAccepted", message);
         // Update local state immediately
         setEvents((prevEvents) =>
           prevEvents.map((event) =>
@@ -206,7 +112,6 @@ const Calendar = () => {
           status: "denied",
           className: "event-denied",
         };
-        socketRef.current.emit("send_message", updatedEvent);
 
         // Update local state immediately
         setEvents((prevEvents) =>
@@ -364,15 +269,6 @@ const Calendar = () => {
         }
       );
 
-      // Emit a socket event to notify the server about the event deletion
-      const message = {
-        type: "scheduleDeleted",
-        scheduleId: selectedEvent.id,
-        schedule: selectedEvent,
-      };
-      socketRef.current.emit("scheduleDeleted", message);
-
-      // Update the UI by removing the deleted event from the events array
       setEvents(events.filter((event) => event.id !== selectedEvent.id));
     } catch (error) {
       console.error("Error deleting event:", error);

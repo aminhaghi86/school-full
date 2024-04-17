@@ -387,7 +387,7 @@ const Calendar = () => {
 
   return (
     <div style={{ margin: "10rem 0" }}>
-      <ToastContainer position="bottom-left" />
+      <ToastContainer position="bottom-left" autoClose={1500} />
       <div>
         <button onClick={() => changeView("today")}>Today</button>
         <button onClick={() => changeView("timeGridWeek")}>Week</button>

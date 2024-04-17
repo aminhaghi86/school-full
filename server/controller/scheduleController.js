@@ -1,7 +1,5 @@
 const { Schedule } = require("../model/task");
-const { getIO, sendToTeacher, getTeacherSocketId } = require("../socket");
-// const { findAllAvailableTeachers } = require("./notifyTeacher");
-// const { sequelize } = require("../model/task");
+const { getIO, getTeacherSocketId } = require("../socket");
 const getAllSchedules = async (req, res) => {
   try {
     const io = getIO();

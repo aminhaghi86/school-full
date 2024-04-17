@@ -6,8 +6,7 @@ const {
   updateSchedule,
   deleteSchedule,
 } = require("../controller/scheduleController");
-const {  acceptSchedule,
-  denySchedule}=require('../controller/notifyTeacher')
+
 const { requireAuth } = require("../middleware/requireAuth");
 
 const setupRoutes = (app, io) => {
@@ -22,8 +21,6 @@ const setupRoutes = (app, io) => {
   router.post("/", createSchedule);
   router.put("/:id", updateSchedule);
   router.delete("/:id", deleteSchedule);
-  router.post("/:id/accept", acceptSchedule);
-  router.post("/:id/deny", denySchedule);
 
   // Mount the router at /schedule
   app.use("/schedule", router);

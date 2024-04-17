@@ -68,18 +68,9 @@ const Calendar = () => {
     return () => {
       socketInstance.disconnect();
       socketInstance.off("message-from-server", handleMessageFromServer);
-      socketInstance.off(
-        "scheduleCreated",
-        handleMessageCreatedFromServer
-      );
-      socketInstance.off(
-        "scheduleUpdated",
-        handleMessageUpdatedFromServer
-      );
-      socketInstance.off(
-        "scheduleDeleted",
-        handleMessageDeletedFromServer
-      );
+      socketInstance.off("scheduleCreated", handleMessageCreatedFromServer);
+      socketInstance.off("scheduleUpdated", handleMessageUpdatedFromServer);
+      socketInstance.off("scheduleDeleted", handleMessageDeletedFromServer);
     };
   }, [user]);
 
@@ -102,87 +93,6 @@ const Calendar = () => {
       console.log(error);
     }
   }, [user]);
-
-  const handleAcceptEvent = async () => {
-    if (!user || !selectedEvent) {
-      return;
-    }
-
-    try {
-      const response = await axios.post(
-        `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}/accept`,
-        { scheduleId: selectedEvent.id },
-        {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        }
-      );
-
-      if (response.status === 200) {
-        const updatedEvent = {
-          ...selectedEvent,
-          status: "accepted",
-          className: "event-accepted",
-        };
-
-        // Update local state immediately
-        setEvents((prevEvents) =>
-          prevEvents.map((event) =>
-            event.id === selectedEvent.id ? updatedEvent : event
-          )
-        );
-      }
-    } catch (error) {
-      if (error.response && error.response.status === 404) {
-        alert("This schedule has already been accepted by another teacher.");
-        fetchEvents();
-      } else {
-        console.error("Error accepting event:", error);
-      }
-    }
-
-    setSelectedEvent(null);
-    setShowModal(false);
-  };
-
-  const handleDenyEvent = async () => {
-    if (!user || !selectedEvent) {
-      return;
-    }
-
-    try {
-      const response = await axios.post(
-        `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}/deny`,
-        { scheduleId: selectedEvent.id },
-        {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        }
-      );
-
-      if (response.status === 200) {
-        const updatedEvent = {
-          ...selectedEvent,
-          status: "denied",
-          className: "event-denied",
-        };
-
-        // Update local state immediately
-        setEvents((prevEvents) =>
-          prevEvents.map((event) =>
-            event.id === selectedEvent.id ? updatedEvent : event
-          )
-        );
-      }
-    } catch (error) {
-      console.error("Error denying event:", error);
-    }
-
-    setSelectedEvent(null);
-    setShowModal(false);
-  };
 
   const handleSelect = (selectInfo) => {
     setSelectedEvent({
@@ -430,8 +340,8 @@ const Calendar = () => {
         <Modal
           onClose={() => setShowModal(false)}
           onDelete={handleDeleteEvent}
-          onAccept={handleAcceptEvent}
-          onDeny={handleDenyEvent}
+          // onAccept={handleAcceptEvent}
+          // onDeny={handleDenyEvent}
         >
           <h2>
             {selectedEvent.start} - {selectedEvent.end}
@@ -467,16 +377,7 @@ const Calendar = () => {
           <button className="save-button" onClick={handleSaveEvent}>
             Save Event
           </button>
-          {selectedEvent.status === "active" && (
-            <>
-              <button className="accept-button" onClick={handleAcceptEvent}>
-                Accept Event
-              </button>
-              <button className="deny-button" onClick={handleDenyEvent}>
-                Deny Event
-              </button>
-            </>
-          )}
+          {selectedEvent.status === "active" && <></>}
         </Modal>
       )}
     </div>

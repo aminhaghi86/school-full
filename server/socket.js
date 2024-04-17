@@ -39,15 +39,6 @@ const initializeSocket = (server) => {
 
   return io;
 };
-function sendToTeacher(teacherId, message) {
-  const teacherSocketId = getTeacherSocketId(teacherId);
-  if (teacherSocketId) {
-    io.to(teacherSocketId).emit("message", message);
-  } else {
-    console.log(`No connected socket found for teacher ID: ${teacherId}`);
-    // Handle the teacher being offline (e.g., queue the message, notify sender, etc.)
-  }
-}
 
 function getTeacherSocketId(teacherId) {
   return teacherSockets[teacherId];
@@ -60,4 +51,4 @@ const getIO = () => {
   return io;
 };
 
-module.exports = { getTeacherSocketId, initializeSocket, getIO, sendToTeacher };
+module.exports = { getTeacherSocketId, initializeSocket, getIO };

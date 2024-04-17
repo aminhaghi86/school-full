@@ -7,6 +7,7 @@ const DeleteEventModal = ({ eventId, onClose }) => {
   // Function to fetch available teachers
 
   console.log("eventId", eventId);
+  console.log("selectedTeacherId", selectedTeacherId);
   // Fetch available teachers when component mounts
   useEffect(() => {
     const fetchAvailableTeachers = async () => {
@@ -27,7 +28,7 @@ const DeleteEventModal = ({ eventId, onClose }) => {
         );
 
         if (!response.ok) throw new Error(`Error: ${response.statusText}`);
-        console.log('response',response);
+        console.log("response", response);
         const data = await response.json();
         setAvailableTeachers(data);
       } catch (error) {
@@ -43,59 +44,57 @@ const DeleteEventModal = ({ eventId, onClose }) => {
     setSelectedTeacherId(teacherId);
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+    if (!selectedTeacherId) {
+      alert("Please select a teacher to assign before deleting");
+      return;
+    }
 
-  if (!selectedTeacherId) {
-    alert("Please select a teacher to assign before deleting");
-    return;
-  }
+    try {
+      // Try to assign the teacher first
+      const assignResponse = await fetch(
+        `${process.env.REACT_APP_ENDPOINT}/assign-teacher`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`,
+          },
+          body: JSON.stringify({
+            eventId,
+            teacherId: selectedTeacherId,
+          }),
+        }
+      );
 
-  try {
-    // Try to assign the teacher first
-    const assignResponse = await fetch(
-      `${process.env.REACT_APP_ENDPOINT}/assign-teacher`,
-      {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({
-          eventId,
-          teacherId: selectedTeacherId,
-        }),
-      }
-    );
+      if (!assignResponse.ok)
+        throw new Error(`Error: ${assignResponse.statusText}`);
+      const assignData = await assignResponse.json();
+      console.log("Teacher assigned:", assignData);
 
-    if (!assignResponse.ok) throw new Error(`Error: ${assignResponse.statusText}`);
-    const assignData = await assignResponse.json();
-    console.log("Teacher assigned:", assignData);
+      // // After successful assignment, proceed to delete the schedule
+      // const deleteResponse = await fetch(
+      //   `${process.env.REACT_APP_ENDPOINT}/${eventId}`,
+      //   {
+      //     method: "DELETE",
+      //     headers: {
+      //       Authorization: `Bearer ${user.token}`,
+      //     },
+      //   }
+      // );
 
-    // // After successful assignment, proceed to delete the schedule
-    // const deleteResponse = await fetch(
-    //   `${process.env.REACT_APP_ENDPOINT}/${eventId}`,
-    //   {
-    //     method: "DELETE",
-    //     headers: {
-    //       Authorization: `Bearer ${user.token}`,
-    //     },
-    //   }
-    // );
+      // if (!deleteResponse.ok) throw new Error(`Error: ${deleteResponse.statusText}`);
+      // const deleteData = await deleteResponse.json();
+      // console.log("Schedule deleted:", deleteData);
 
-    // if (!deleteResponse.ok) throw new Error(`Error: ${deleteResponse.statusText}`);
-    // const deleteData = await deleteResponse.json();
-    // console.log("Schedule deleted:", deleteData);
-
-    onClose(); // Close the modal after successful deletion
-
-  } catch (error) {
-    console.error("Failed to assign teacher or delete schedule:", error);
-    // Handle error case here
-  }
-};
-
+      onClose(); // Close the modal after successful deletion
+    } catch (error) {
+      console.error("Failed to assign teacher or delete schedule:", error);
+      // Handle error case here
+    }
+  };
 
   return (
     <div

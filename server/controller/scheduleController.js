@@ -1,6 +1,7 @@
 const { Schedule, User } = require("../model/task");
 const { getIO, getTeacherSocketId } = require("../socket");
 const { Op } = require("sequelize");
+const sequelize = require('sequelize'); 
 const getAllSchedules = async (req, res) => {
   try {
     const io = getIO();
@@ -194,6 +195,7 @@ const getAvailableTeachers = async (req, res) => {
 };
 const assignTeacherToSchedule = async (req, teacherId) => {
   try {
+    console.log('req req req after deleteing and the assing!',req.body);
     const eventId = req.body.eventId;
     console.log(`Assigning teacher to schedule with event ID: ${eventId}`);
     const schedule = await Schedule.findByPk(eventId);
@@ -213,7 +215,8 @@ const assignTeacherToSchedule = async (req, teacherId) => {
     }
 
     // Assign the teacher to the schedule
-    schedule.userId = teacherId;
+    console.log('schedule.userId',schedule.userId);
+    schedule.userId = req.body.teacherId;
 
     // Save the changes
     await schedule.save();

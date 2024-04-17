@@ -1,12 +1,14 @@
 const { Schedule } = require("../model/task");
-const { getIO, sendToTeacher } = require("../socket");
+const { getIO, sendToTeacher, getTeacherSocketId } = require("../socket");
 // const { findAllAvailableTeachers } = require("./notifyTeacher");
 // const { sequelize } = require("../model/task");
 const getAllSchedules = async (req, res) => {
   try {
+    const io = getIO();
     const userId = req.user.id;
     const schedules = await Schedule.findAll({ where: { UserId: userId } });
     res.status(200).json(schedules);
+    io.emit("message-from-server", schedules);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
@@ -28,10 +30,39 @@ const getScheduleById = async (req, res) => {
   }
 };
 
+// const createSchedule = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+//     const { start, end, title, description, course } = req.body;
+//     const schedule = await Schedule.create({
+//       start,
+//       end,
+//       title,
+//       description,
+//       course,
+//       userId,
+//     });
+//     const io = getIO();
+//     const teacherSocketId = getTeacherSocketId(userId);
+//     console.log('teacherSocketId',teacherSocketId);
+//     if (teacherSocketId) {
+//       io.to(teacherSocketId).emit("scheduleCreated", schedule);
+//     }
+//     // const socketId = getTeacherSocketId(userId);
+//     // io.emit("scheduleCreated", schedule);
+//     res.status(201).json(schedule);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// };
+
+// Update a schedule
 const createSchedule = async (req, res) => {
   try {
     const userId = req.user.id;
     const { start, end, title, description, course } = req.body;
+    console.log('Received user ID:', userId); // Log user ID
     const schedule = await Schedule.create({
       start,
       end,
@@ -41,7 +72,13 @@ const createSchedule = async (req, res) => {
       userId,
     });
     const io = getIO();
-    io.emit("scheduleCreated", schedule);
+    const teacherSocketId = getTeacherSocketId(userId);
+    console.log('Retrieved teacher socket ID:', teacherSocketId); // Log teacher socket ID
+    if (teacherSocketId) {
+      io.to(teacherSocketId).emit("scheduleCreated", schedule);
+    } else {
+      console.log('No teacher socket ID found for user ID:', userId); // Log if teacher socket ID is not found
+    }
     res.status(201).json(schedule);
   } catch (error) {
     console.error(error);
@@ -49,7 +86,6 @@ const createSchedule = async (req, res) => {
   }
 };
 
-// Update a schedule
 const updateSchedule = async (req, res) => {
   try {
     const io = getIO();
@@ -93,12 +129,10 @@ const deleteSchedule = async (req, res) => {
     await scheduleToDelete.destroy();
 
     // Send a response indicating successful deletion
-    res
-      .status(200)
-      .json({
-        message: "Schedule deleted successfully",
-        event: scheduleToDelete,
-      });
+    res.status(200).json({
+      message: "Schedule deleted successfully",
+      event: scheduleToDelete,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });

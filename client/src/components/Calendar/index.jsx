@@ -5,9 +5,11 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import Modal from "./Modal";
 import axios from "axios";
+import { io } from "socket.io-client";
 import { useAuthContext } from "../../hooks/useAuthContext";
+import { ToastContainer, toast } from "react-toastify";
 import "./index.css";
-
+import "react-toastify/dist/ReactToastify.css";
 const Calendar = () => {
   const { user } = useAuthContext();
   const [selectedEvent, setSelectedEvent] = useState({
@@ -27,6 +29,46 @@ const Calendar = () => {
 
     return () => {};
   }, [user]);
+  useEffect(() => {
+    const socketInstance = io("http://localhost:8001");
+
+    socketInstance.on("connect", () => {
+      console.log("Socket connected");
+      socketInstance.emit("teacherConnected", user.userId);
+    });
+
+    socketInstance.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
+
+    const handleMessageFromServer = (data) => {
+      console.log("data server", data);
+      setEvents((prev) => [...prev, data]);
+    };
+    const handleMessageCreatedFromServer = (data) => {
+      if (data.creatorId === user.id) {
+        toast.success("New event created!");
+      }
+      toast.success("New event created!");
+      console.log("server created event", data);
+    };
+    socketInstance.on("message-from-server", handleMessageFromServer);
+    socketInstance.on("scheduleCreated", handleMessageCreatedFromServer);
+
+    socketInstance.on("disconnect", () => {
+      console.log("Socket disconnected");
+    });
+
+    return () => {
+      socketInstance.disconnect();
+      socketInstance.off("message-from-server", handleMessageFromServer);
+      socketInstance.off(
+        "server scheduleCreated",
+        handleMessageCreatedFromServer
+      );
+    };
+  }, []);
+
   const fetchEvents = useCallback(async () => {
     try {
       if (!user) return;
@@ -331,6 +373,7 @@ const Calendar = () => {
 
   return (
     <div style={{ margin: "10rem 0" }}>
+      <ToastContainer position="bottom-left"/>
       <div>
         <button onClick={() => changeView("today")}>Today</button>
         <button onClick={() => changeView("timeGridWeek")}>Week</button>

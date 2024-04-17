@@ -10,74 +10,31 @@ const initializeSocket = (server) => {
     },
   });
 
+  
   io.on("connection", (socket) => {
+    
     console.log(`${socket.id} client connected`);
-
-    // Register teacher with socket
-    socket.on("registerTeacher", ({ teacherId }) => {
-      console.log(
-        `Registering teacher with id: ${teacherId} and socket id: ${socket.id}`
-      );
-      // Associate the socket with the teacher ID
-      teacherSockets[teacherId] = socket.id;
-
-      // You can also attach it directly to the socket object if that's more convenient
-      socket.teacherId = teacherId;
+    socket.on("teacherConnected", (teacherId) => {
+      console.log(`Teacher with ID ${teacherId} connected.`);
+      teacherSockets[teacherId] = socket.id; // Store teacher's socket ID
     });
-    socket.on("joinRoom", (data) => {
-      const { roomId } = data;
-      socket.join(roomId);
-      console.log(`Socket ${socket.id} joined room ${roomId}`);
-    });
-    socket.on("leaveRoom", (data) => {
-      const { roomId } = data;
-      socket.leave(roomId);
-      console.log(`Socket ${socket.id} left room ${roomId}`);
-    });
+  
     socket.on("connect_error", (err) => {
       console.error(`connect_error due to ${err.message}`);
     });
 
-    // Handle disconnection
+
     socket.on("disconnect", () => {
+      // Remove teacher's socket ID on disconnection
+      const disconnectedTeacherId = Object.keys(teacherSockets).find(
+        (key) => teacherSockets[key] === socket.id
+      );
+      if (disconnectedTeacherId) {
+        console.log(`Teacher with ID ${disconnectedTeacherId} disconnected.`);
+        delete teacherSockets[disconnectedTeacherId];
+      }
       console.log(`Client disconnected: ${socket.id}`);
     });
-
-    socket.on("scheduleDeleted", (data) => {
-      console.log("Schedule deleted:", data);
-      // Broadcast to all clients except sender
-      socket.broadcast.emit("scheduleDeleted", data);
-
-      // Send a message to the specific teacher if the teacherId is part of the data object
-      if (data.teacherId) {
-        const message = {
-          type: "scheduleDeleted",
-          scheduleId: data.scheduleId,
-        };
-        sendToTeacher(data.teacherId, message);
-      }
-    });
-
-    socket.on("scheduleReceived", (data) => {
-      console.log("Schedule received:", data);
-      // Update calendar logic...
-    });
-    socket.on("identify", function (teacherId) {
-      teacherSockets[teacherId] = socket.id;
-    });
-    // When the teacher disconnects, remove them from the registry
-    socket.on("disconnect", () => {
-      Object.keys(teacherSockets).forEach((teacherId) => {
-        if (teacherSockets[teacherId] === socket.id) {
-          delete teacherSockets[teacherId];
-          console.log(
-            `Teacher ${teacherId} with socket ${socket.id} disconnected`
-          );
-        }
-      });
-    });
-
-    // Additional Socket.IO event handling...
   });
 
   return io;

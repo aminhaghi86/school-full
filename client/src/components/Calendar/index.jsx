@@ -46,9 +46,7 @@ const Calendar = () => {
       setEvents((prev) => [...prev, data]);
     };
     const handleMessageCreatedFromServer = (data) => {
-      if (data.creatorId === user.id) {
-        toast.success("New event created!");
-      }
+      toast.success("New event created!");
       console.log("server created event", data);
     };
     socketInstance.on("message-from-server", handleMessageFromServer);
@@ -66,7 +64,7 @@ const Calendar = () => {
         handleMessageCreatedFromServer
       );
     };
-  }, []);
+  }, [user]);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -372,7 +370,7 @@ const Calendar = () => {
 
   return (
     <div style={{ margin: "10rem 0" }}>
-      <ToastContainer position="bottom-left"/>
+      <ToastContainer position="bottom-left" />
       <div>
         <button onClick={() => changeView("today")}>Today</button>
         <button onClick={() => changeView("timeGridWeek")}>Week</button>

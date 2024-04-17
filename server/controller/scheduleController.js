@@ -46,11 +46,11 @@ const createSchedule = async (req, res) => {
     });
     const io = getIO();
     const teacherSocketId = getTeacherSocketId(userId);
-    console.log("Retrieved teacher socket ID:", teacherSocketId); // Log teacher socket ID
+    console.log("Retrieved teacher socket ID:", teacherSocketId);
     if (teacherSocketId) {
       io.to(teacherSocketId).emit("scheduleCreated", schedule);
     } else {
-      console.log("No teacher socket ID found for user ID:", userId); // Log if teacher socket ID is not found
+      console.log("No teacher socket ID found for user ID:", userId);
     }
     res.status(201).json(schedule);
   } catch (error) {
@@ -81,7 +81,8 @@ const updateSchedule = async (req, res) => {
     schedule.course = course;
 
     await schedule.save();
-    io.emit("scheduleUpdated", schedule);
+    // io.emit("scheduleUpdated", schedule);
+ 
     res.status(200).json(schedule);
   } catch (error) {
     console.error(error);
@@ -91,8 +92,9 @@ const updateSchedule = async (req, res) => {
 
 const deleteSchedule = async (req, res) => {
   try {
+    const io = getIO()
     const { id } = req.params;
-
+    const userId = req.user.id;
     // Fetch the event to be deleted
     const scheduleToDelete = await Schedule.findByPk(id);
     if (!scheduleToDelete) {
@@ -100,7 +102,13 @@ const deleteSchedule = async (req, res) => {
     }
 
     await scheduleToDelete.destroy();
-
+    const teacherSocketId = getTeacherSocketId(userId);
+    console.log("Retrieved teacher socket ID:", teacherSocketId);
+    if (teacherSocketId) {
+      io.to(teacherSocketId).emit("scheduleDeleted", scheduleToDelete);
+    } else {
+      console.log("No teacher socket ID found for user ID:", userId);
+    }
     // Send a response indicating successful deletion
     res.status(200).json({
       message: "Schedule deleted successfully",

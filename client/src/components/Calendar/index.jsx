@@ -49,9 +49,13 @@ const Calendar = () => {
       toast.success("New event created!");
       console.log("server created event", data);
     };
+    const handleMessageDeletedFromServer = (data) => {
+      toast.warn("server : event Deleted!");
+      console.log("server deleted event", data);
+    };
     socketInstance.on("message-from-server", handleMessageFromServer);
     socketInstance.on("scheduleCreated", handleMessageCreatedFromServer);
-
+    socketInstance.on("scheduleDeleted", handleMessageDeletedFromServer);
     socketInstance.on("disconnect", () => {
       console.log("Socket disconnected");
     });
@@ -60,8 +64,12 @@ const Calendar = () => {
       socketInstance.disconnect();
       socketInstance.off("message-from-server", handleMessageFromServer);
       socketInstance.off(
-        "server scheduleCreated",
+        "scheduleCreated",
         handleMessageCreatedFromServer
+      );
+      socketInstance.off(
+        "scheduleDeleted",
+        handleMessageDeletedFromServer
       );
     };
   }, [user]);

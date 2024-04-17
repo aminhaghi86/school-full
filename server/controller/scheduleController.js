@@ -35,6 +35,7 @@ const createSchedule = async (req, res) => {
   try {
     const io = getIO();
     const userId = req.user.id;
+    console.log(userId);
     const { start, end, title, description, course } = req.body;
     console.log("Received user ID:", userId);
     const schedule = await Schedule.create({

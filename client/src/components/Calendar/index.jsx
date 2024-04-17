@@ -54,7 +54,7 @@ const Calendar = () => {
       console.log("server deleted event", data);
     };
     const handleMessageUpdatedFromServer = (data) => {
-      toast.success("server : event Updated!");
+      toast.info("server : event Updated!");
       console.log("server updated event", data);
     };
     socketInstance.on("message-from-server", handleMessageFromServer);

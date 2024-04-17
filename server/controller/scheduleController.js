@@ -1,7 +1,7 @@
 const { Schedule, User } = require("../model/task");
 const { getIO, getTeacherSocketId } = require("../socket");
 const { Op } = require("sequelize");
-const sequelize = require('sequelize'); 
+const sequelize = require("sequelize");
 const getAllSchedules = async (req, res) => {
   try {
     const io = getIO();
@@ -195,7 +195,8 @@ const getAvailableTeachers = async (req, res) => {
 };
 const assignTeacherToSchedule = async (req, teacherId) => {
   try {
-    console.log('req req req after deleteing and the assing!',req.body);
+    let t;
+    console.log("req req req after deleteing and the assing!", req.body);
     const eventId = req.body.eventId;
     console.log(`Assigning teacher to schedule with event ID: ${eventId}`);
     const schedule = await Schedule.findByPk(eventId);
@@ -204,22 +205,20 @@ const assignTeacherToSchedule = async (req, teacherId) => {
     }
     console.log("schedule schedule schedule", schedule);
 
-    // Check if the selected teacher is available for this schedule
-    const isAvailable = await findAllAvailableTeachers(
-      schedule.start,
-      schedule.end
-    ).then((teachers) => teachers.some((teacher) => teacher.id === teacherId));
+    await Schedule.create(
+      {
+        start: schedule.start,
+        end: schedule.end,
+        title: schedule.title,
+        description: schedule.description,
+        course: schedule.course,
+        userId: teacherId,
+        status: "pending",
+      },
+      { transaction: t }
+    );
 
-    if (!isAvailable) {
-      throw new Error("Selected teacher is not available");
-    }
-
-    // Assign the teacher to the schedule
-    console.log('schedule.userId',schedule.userId);
-    schedule.userId = req.body.teacherId;
-
-    // Save the changes
-    await schedule.save();
+    console.log("schedule.userId", schedule.userId);
 
     return { success: true };
   } catch (error) {

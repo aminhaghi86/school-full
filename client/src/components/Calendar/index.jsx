@@ -10,6 +10,7 @@ import { useAuthContext } from "../../hooks/useAuthContext";
 import { ToastContainer, toast } from "react-toastify";
 import "./index.css";
 import "react-toastify/dist/ReactToastify.css";
+import DeleteEventModal from "./DeleteEventModal";
 const Calendar = () => {
   const { user } = useAuthContext();
   const [selectedEvent, setSelectedEvent] = useState({
@@ -22,6 +23,7 @@ const Calendar = () => {
   });
   const [events, setEvents] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [deleteMode, setDeleteMode] = useState(false);
   const [calendarView, setCalendarView] = useState("timeGridWeek");
   const calendarRef = useRef(null);
   useEffect(() => {
@@ -46,7 +48,7 @@ const Calendar = () => {
       setEvents((prev) => [...prev, data]);
     };
     const handleMessageCreatedFromServer = (data) => {
-      toast.success("New event created!");
+      toast.success("server : New event created!");
       console.log("server created event", data);
     };
     const handleMessageDeletedFromServer = (data) => {
@@ -224,9 +226,9 @@ const Calendar = () => {
       if (!user || !selectedEvent) {
         return;
       }
-
+      setDeleteMode(true);
       // Send a request to delete the event
-      await axios.delete(
+      const response = await axios.delete(
         `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`,
         {
           headers: {
@@ -235,14 +237,29 @@ const Calendar = () => {
         }
       );
 
-      setEvents(events.filter((event) => event.id !== selectedEvent.id));
+      if (response.status >= 200 && response.status < 300) {
+        // Update events after successful deletion
+        setEvents(events.filter((event) => event.id !== selectedEvent.id));
+        toast.success("Event successfully deleted.");
+      } else {
+        console.error("Error deleting event: Unexpected response", response);
+      }
     } catch (error) {
       console.error("Error deleting event:", error);
+      toast.error("Failed to delete the event.");
+    } finally {
+      // Always reset the selected event and hide modals after delete attempt
+      // setSelectedEvent({
+      //   id: null,
+      //   start: null,
+      //   end: null,
+      //   title: "",
+      //   description: "",
+      //   course: "",
+      // });
+      setShowModal(false);
+      // setDeleteMode(false);
     }
-
-    // Reset selectedEvent and hide the modal
-    setSelectedEvent(null);
-    setShowModal(false);
   };
 
   const handleSaveEvent = async () => {
@@ -379,6 +396,22 @@ const Calendar = () => {
           </button>
           {selectedEvent.status === "active" && <></>}
         </Modal>
+      )}
+      {deleteMode && (
+        <DeleteEventModal
+          eventId={selectedEvent.id}
+          onClose={() => {
+            setDeleteMode(false);
+            setSelectedEvent({
+              id: null,
+              start: null,
+              end: null,
+              title: "",
+              description: "",
+              course: "",
+            });
+          }}
+        />
       )}
     </div>
   );

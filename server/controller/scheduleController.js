@@ -33,9 +33,10 @@ const getScheduleById = async (req, res) => {
 // Update a schedule
 const createSchedule = async (req, res) => {
   try {
+    const io = getIO();
     const userId = req.user.id;
     const { start, end, title, description, course } = req.body;
-    console.log("Received user ID:", userId); // Log user ID
+    console.log("Received user ID:", userId);
     const schedule = await Schedule.create({
       start,
       end,
@@ -44,7 +45,8 @@ const createSchedule = async (req, res) => {
       course,
       userId,
     });
-    const io = getIO();
+    res.status(201).json(schedule);
+
     const teacherSocketId = getTeacherSocketId(userId);
     console.log("Retrieved teacher socket ID:", teacherSocketId);
     if (teacherSocketId) {
@@ -52,7 +54,6 @@ const createSchedule = async (req, res) => {
     } else {
       console.log("No teacher socket ID found for user ID:", userId);
     }
-    res.status(201).json(schedule);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
@@ -63,6 +64,7 @@ const updateSchedule = async (req, res) => {
   try {
     const io = getIO();
     const { id } = req.params;
+    const userId = req.user.id;
     const { start, end, title, description, course } = req.body;
 
     if (!title) {
@@ -82,7 +84,14 @@ const updateSchedule = async (req, res) => {
 
     await schedule.save();
     // io.emit("scheduleUpdated", schedule);
- 
+
+    const teacherSocketId = getTeacherSocketId(userId);
+    console.log("Retrieved teacher socket ID:", teacherSocketId);
+    if (teacherSocketId) {
+      io.to(teacherSocketId).emit("scheduleUpdated", schedule);
+    } else {
+      console.log("No teacher socket ID found for user ID:", userId);
+    }
     res.status(200).json(schedule);
   } catch (error) {
     console.error(error);
@@ -92,7 +101,7 @@ const updateSchedule = async (req, res) => {
 
 const deleteSchedule = async (req, res) => {
   try {
-    const io = getIO()
+    const io = getIO();
     const { id } = req.params;
     const userId = req.user.id;
     // Fetch the event to be deleted

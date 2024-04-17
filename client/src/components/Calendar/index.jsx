@@ -248,17 +248,7 @@ const Calendar = () => {
       console.error("Error deleting event:", error);
       toast.error("Failed to delete the event.");
     } finally {
-      // Always reset the selected event and hide modals after delete attempt
-      // setSelectedEvent({
-      //   id: null,
-      //   start: null,
-      //   end: null,
-      //   title: "",
-      //   description: "",
-      //   course: "",
-      // });
       setShowModal(false);
-      // setDeleteMode(false);
     }
   };
 

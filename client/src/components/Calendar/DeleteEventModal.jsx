@@ -74,22 +74,9 @@ const DeleteEventModal = ({ eventId, onClose }) => {
       const assignData = await assignResponse.json();
       console.log("Teacher assigned:", assignData);
 
-      // // After successful assignment, proceed to delete the schedule
-      // const deleteResponse = await fetch(
-      //   `${process.env.REACT_APP_ENDPOINT}/${eventId}`,
-      //   {
-      //     method: "DELETE",
-      //     headers: {
-      //       Authorization: `Bearer ${user.token}`,
-      //     },
-      //   }
-      // );
 
-      // if (!deleteResponse.ok) throw new Error(`Error: ${deleteResponse.statusText}`);
-      // const deleteData = await deleteResponse.json();
-      // console.log("Schedule deleted:", deleteData);
 
-      onClose(); // Close the modal after successful deletion
+      onClose(); 
     } catch (error) {
       console.error("Failed to assign teacher or delete schedule:", error);
       // Handle error case here

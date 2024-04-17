@@ -49,7 +49,6 @@ const Calendar = () => {
       if (data.creatorId === user.id) {
         toast.success("New event created!");
       }
-      toast.success("New event created!");
       console.log("server created event", data);
     };
     socketInstance.on("message-from-server", handleMessageFromServer);

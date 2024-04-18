@@ -63,12 +63,18 @@ const Calendar = () => {
     socketInstance.on("scheduleCreated", handleMessageCreatedFromServer);
     socketInstance.on("scheduleDeleted", handleMessageDeletedFromServer);
     socketInstance.on("scheduleUpdated", handleMessageUpdatedFromServer);
+    socketInstance.on("eventAssigned", (data) => {
+      // Update the calendar with the new event data
+      console.log('data from server',data);
+      setEvents((prevEvents) => [...prevEvents, data]);
+    });
     socketInstance.on("disconnect", () => {
       console.log("Socket disconnected");
     });
 
     return () => {
       socketInstance.disconnect();
+      
       socketInstance.off("message-from-server", handleMessageFromServer);
       socketInstance.off("scheduleCreated", handleMessageCreatedFromServer);
       socketInstance.off("scheduleUpdated", handleMessageUpdatedFromServer);

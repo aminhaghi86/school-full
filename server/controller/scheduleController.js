@@ -195,6 +195,7 @@ const getAvailableTeachers = async (req, res) => {
 };
 const assignTeacherToSchedule = async (req, teacherId) => {
   try {
+    const io = getIO()
     let t;
     console.log("req req req after deleteing and the assing!", req.body);
     const eventId = req.body.eventId;
@@ -213,11 +214,22 @@ const assignTeacherToSchedule = async (req, teacherId) => {
         description: schedule.description,
         course: schedule.course,
         userId: teacherId,
-        status: "pending",
+        status: "accepted",
       },
       { transaction: t }
     );
 
+    //
+    const teacherSocketId = getTeacherSocketId(teacherId);
+    if (teacherSocketId) {
+      io.to(teacherSocketId).emit("eventAssigned", schedule);
+
+      // Also, emit the event to the client side of the teacher
+    } else {
+      console.log("No socket found for teacher ID:", teacherId);
+    }
+
+    //
     console.log("schedule.userId", schedule.userId);
 
     return { success: true };

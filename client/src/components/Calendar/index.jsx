@@ -311,7 +311,7 @@ const Calendar = () => {
   }, [user, fetchEvents]);
 
   return (
-    <div style={{ margin: "10rem 0" }}>
+    <div style={{ margin: "5rem 0" }}>
       <ToastContainer position="bottom-left" autoClose={1500} />
       <div>
         <button onClick={() => changeView("today")}>Today</button>

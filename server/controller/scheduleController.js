@@ -1,7 +1,6 @@
 const { Schedule, User } = require("../model/task");
 const { getIO, getTeacherSocketId } = require("../socket");
 const { Op } = require("sequelize");
-const sequelize = require("sequelize");
 const getAllSchedules = async (req, res) => {
   try {
     const io = getIO();

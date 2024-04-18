@@ -3,14 +3,14 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import Modal from "./Modal";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { useAuthContext } from "../../hooks/useAuthContext";
 import { ToastContainer, toast } from "react-toastify";
-import "./index.css";
+import Modal from "../Modal/Modal";
+import DeleteEventModal from "../DeleteEventModal";
 import "react-toastify/dist/ReactToastify.css";
-import DeleteEventModal from "./DeleteEventModal";
+import "./index.css";
 const Calendar = () => {
   const { user } = useAuthContext();
   const [selectedEvent, setSelectedEvent] = useState({

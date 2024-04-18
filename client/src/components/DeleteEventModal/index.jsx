@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuthContext } from "../../hooks/useAuthContext";
-import Spinner from "./Spinner";
+import Spinner from "../Spinner";
 
 const DeleteEventModal = ({ eventId, onClose }) => {
   const [availableTeachers, setAvailableTeachers] = useState([]);

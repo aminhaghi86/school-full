@@ -1,45 +1,49 @@
 import React, { useState, useEffect } from "react";
 import { useAuthContext } from "../../hooks/useAuthContext";
+import Spinner from "./Spinner";
+
 const DeleteEventModal = ({ eventId, onClose }) => {
   const [availableTeachers, setAvailableTeachers] = useState([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState(null);
+  const [loading, setLoading] = useState(false);
   const { user } = useAuthContext();
-  // Function to fetch available teachers
 
-  console.log("eventId", eventId);
-  console.log("selectedTeacherId", selectedTeacherId);
-  // Fetch available teachers when component mounts
   useEffect(() => {
     const fetchAvailableTeachers = async () => {
-      // Check if eventId is null or undefined
       if (!eventId) {
         console.error("Event ID is null or undefined.");
         return;
       }
 
-      try {
-        const response = await fetch(
-          `${process.env.REACT_APP_ENDPOINT}/available-teachers?eventId=${eventId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${user.token}`,
-            },
-          }
-        );
+      setLoading(true);
 
-        if (!response.ok) throw new Error(`Error: ${response.statusText}`);
-        console.log("response", response);
-        const data = await response.json();
-        setAvailableTeachers(data);
-      } catch (error) {
-        console.error("Failed to fetch available teachers:", error);
-      }
+      const timer = setTimeout(async () => {
+        try {
+          const response = await fetch(
+            `${process.env.REACT_APP_ENDPOINT}/available-teachers?eventId=${eventId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${user.token}`,
+              },
+            }
+          );
+
+          if (!response.ok) throw new Error(`Error: ${response.statusText}`);
+
+          const data = await response.json();
+          setAvailableTeachers(data);
+        } catch (error) {
+          console.error("Failed to fetch available teachers:", error);
+        } finally {
+          setLoading(false);
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
     };
 
     fetchAvailableTeachers();
   }, [eventId, user]);
 
-  // Function to handle teacher selection
   const handleSelectionChange = (teacherId) => {
     setSelectedTeacherId(teacherId);
   };
@@ -53,7 +57,6 @@ const DeleteEventModal = ({ eventId, onClose }) => {
     }
 
     try {
-      // Try to assign the teacher first
       const assignResponse = await fetch(
         `${process.env.REACT_APP_ENDPOINT}/assign-teacher`,
         {
@@ -74,12 +77,9 @@ const DeleteEventModal = ({ eventId, onClose }) => {
       const assignData = await assignResponse.json();
       console.log("Teacher assigned:", assignData);
 
-
-
-      onClose(); 
+      onClose();
     } catch (error) {
       console.error("Failed to assign teacher or delete schedule:", error);
-      // Handle error case here
     }
   };
 
@@ -100,11 +100,12 @@ const DeleteEventModal = ({ eventId, onClose }) => {
       }}
     >
       <h3>Select a Teacher:</h3>
+      {loading && <Spinner />}
       <form onSubmit={handleSubmit}>
         {availableTeachers.map((teacher) => (
-          <>
+          <div key={teacher.id}>
             <p>{teacher.email}</p>
-            <label key={teacher.id}>
+            <label>
               <input
                 type="radio"
                 value={teacher.id}
@@ -113,9 +114,10 @@ const DeleteEventModal = ({ eventId, onClose }) => {
               />
               {teacher.name}
             </label>
-          </>
+          </div>
         ))}
-        <button type="submit">Assign Teacher</button>
+
+        {selectedTeacherId && <button type="submit">Assign Teacher</button>}
       </form>
       <button onClick={onClose}>Cancel</button>
     </div>

@@ -103,21 +103,20 @@ const DeleteEventModal = ({ eventId, onClose }) => {
       {loading && <Spinner />}
       <form onSubmit={handleSubmit}>
         {availableTeachers.map((teacher) => (
-          <>
-            <div key={teacher.id}>
-              <p>{teacher.email}</p>
-              <label key={teacher.id}>
-                <input
-                  type="radio"
-                  value={teacher.id}
-                  checked={selectedTeacherId === teacher.id}
-                  onChange={() => handleSelectionChange(teacher.id)}
-                />
-                {teacher.name}
-              </label>
-            </div>
-          </>
+          <div key={teacher.id}>
+            <p>{teacher.email}</p>
+            <label>
+              <input
+                type="radio"
+                value={teacher.id}
+                checked={selectedTeacherId === teacher.id}
+                onChange={() => handleSelectionChange(teacher.id)}
+              />
+              {teacher.name}
+            </label>
+          </div>
         ))}
+
         {selectedTeacherId && <button type="submit">Assign Teacher</button>}
       </form>
       <button onClick={onClose}>Cancel</button>

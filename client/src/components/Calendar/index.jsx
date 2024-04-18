@@ -62,7 +62,10 @@ const Calendar = () => {
     const handleAssignTask = (data) => {
       // Update the calendar with the new event data
       console.log("data from server", data);
-      setEvents((prevEvents) => [...prevEvents, data]);
+      toast.info(
+        `server : event comes  from ${data.sendUser}to your canlendar`
+      );
+      setEvents((prevEvents) => [...prevEvents, data.event]);
     };
     socketInstance.on("message-from-server", handleMessageFromServer);
     socketInstance.on("scheduleCreated", handleMessageCreatedFromServer);

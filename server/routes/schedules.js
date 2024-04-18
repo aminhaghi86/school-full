@@ -5,9 +5,11 @@ const {
   createSchedule,
   updateSchedule,
   deleteSchedule,
+  getAvailableTeachers,
+  assignnewschedule
+
 } = require("../controller/scheduleController");
-const {  acceptSchedule,
-  denySchedule}=require('../controller/notifyTeacher')
+
 const { requireAuth } = require("../middleware/requireAuth");
 
 const setupRoutes = (app, io) => {
@@ -18,12 +20,15 @@ const setupRoutes = (app, io) => {
 
   // Define routes
   router.get("/", getAllSchedules);
+  router.get("/available-teachers", getAvailableTeachers);
   router.get("/:id", getScheduleById);
   router.post("/", createSchedule);
+  router.post('/assign-teacher', assignnewschedule);
   router.put("/:id", updateSchedule);
   router.delete("/:id", deleteSchedule);
-  router.post("/:id/accept", acceptSchedule);
-  router.post("/:id/deny", denySchedule);
+  // Server-side handler for the '/api/assign-teacher' endpoint
+
+
 
   // Mount the router at /schedule
   app.use("/schedule", router);

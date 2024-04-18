@@ -1,7 +1,7 @@
-.event-accepted {
+/* .event-accepted {
     background-color: #0443ef; /* Green for accepted events */
-  }
-  
+  /* } */
+   
   .event-denied {
     background-color: #ffcdd2; /* Red for denied events */
   }
@@ -21,3 +21,66 @@
     color: white;
     /* Add other styling as needed */
   }
+
+  /*  */
+  /* Modal container */
+.modal-container {
+  width: 400px; /* Adjust width as needed */
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Date and time spans */
+.date-time {
+  margin-bottom: 10px;
+  font-weight: bold;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Event name input */
+.event-name {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Event description textarea */
+.event-description {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: none;
+}
+
+/* Course select */
+.course-select {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Save button */
+.save-button {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.save-button:hover {
+  background-color: #0056b3;
+}
+
+/* Status */
+

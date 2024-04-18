@@ -5,7 +5,9 @@
 	top: 0;
 	left: 0;
 	width: 100%;
+	border-bottom: 1px solid #cccccc;
 }
+
 .header-container a {
 	text-decoration: none;
 	padding: 3rem 0rem;

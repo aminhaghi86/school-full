@@ -194,7 +194,7 @@ const getAvailableTeachers = async (req, res) => {
 };
 const assignTeacherToSchedule = async (req, teacherId) => {
   try {
-    const io = getIO()
+    const io = getIO();
     let t;
     console.log("req req req after deleteing and the assing!", req.body);
     const eventId = req.body.eventId;
@@ -221,7 +221,10 @@ const assignTeacherToSchedule = async (req, teacherId) => {
     //
     const teacherSocketId = getTeacherSocketId(teacherId);
     if (teacherSocketId) {
-      io.to(teacherSocketId).emit("eventAssigned", schedule);
+      io.to(teacherSocketId).emit("eventAssigned", {
+        event: schedule,
+        sendUser: req.body.email,
+      });
 
       // Also, emit the event to the client side of the teacher
     } else {
@@ -240,7 +243,8 @@ const assignTeacherToSchedule = async (req, teacherId) => {
 
 const assignnewschedule = async (req, res) => {
   try {
-    console.log("Request dataaaaa req body:", req.body);
+    console.log("Request dataaaaa body:", req.body);
+    console.log("Request dataaaaa body:", req.headers);
     const { eventId, teacherId } = req.body;
     if (eventId === null || teacherId === null) {
       // Respond with a bad request error if validation fails.

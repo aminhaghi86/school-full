@@ -68,6 +68,7 @@ const DeleteEventModal = ({ eventId, onClose }) => {
           body: JSON.stringify({
             eventId,
             teacherId: selectedTeacherId,
+            email: user.email,
           }),
         }
       );

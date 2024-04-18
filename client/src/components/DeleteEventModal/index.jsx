@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuthContext } from "../../hooks/useAuthContext";
-import Spinner from "./Spinner";
-
+import Spinner from "../Spinner";
+import "./deleteevent.css";
 const DeleteEventModal = ({ eventId, onClose }) => {
   const [availableTeachers, setAvailableTeachers] = useState([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState(null);
@@ -84,27 +84,12 @@ const DeleteEventModal = ({ eventId, onClose }) => {
   };
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        zIndex: "99999",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        width: "50vh",
-        height: "50vh",
-        background: "#cccccc",
-        borderRadius: "1rem",
-        overflowY: "auto",
-        padding: "1rem",
-      }}
-    >
+    <div className="delete-event-modal">
       <h3>Select a Teacher:</h3>
       {loading && <Spinner />}
       <form onSubmit={handleSubmit}>
         {availableTeachers.map((teacher) => (
-          <div key={teacher.id}>
-            <p>{teacher.email}</p>
+          <div key={teacher.id} className="modal-inner">
             <label>
               <input
                 type="radio"
@@ -114,6 +99,7 @@ const DeleteEventModal = ({ eventId, onClose }) => {
               />
               {teacher.name}
             </label>
+            <p>{teacher.email}</p>
           </div>
         ))}
 

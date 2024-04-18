@@ -3,14 +3,14 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import Modal from "./Modal";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { useAuthContext } from "../../hooks/useAuthContext";
 import { ToastContainer, toast } from "react-toastify";
-import "./index.css";
+import Modal from "../Modal/Modal";
+import DeleteEventModal from "../DeleteEventModal";
 import "react-toastify/dist/ReactToastify.css";
-import DeleteEventModal from "./DeleteEventModal";
+import "./index.css";
 const Calendar = () => {
   const { user } = useAuthContext();
   const [selectedEvent, setSelectedEvent] = useState({
@@ -352,49 +352,62 @@ const Calendar = () => {
         eventResize={handleEventResize}
       />
       {showModal && (
-        <Modal
-          onClose={() => setShowModal(false)}
-          onDelete={handleDeleteEvent}
-          // onAccept={handleAcceptEvent}
-          // onDeny={handleDenyEvent}
-        >
-          <h2>
-            {selectedEvent.start} - {selectedEvent.end}
-          </h2>
-          <input
-            type="text"
-            placeholder="Event Name"
-            value={selectedEvent.title}
-            onChange={(e) => handleInputChange(e, "title")}
-          />
-          <textarea
-            placeholder="Event Description"
-            value={selectedEvent.description}
-            onChange={(e) => handleInputChange(e, "description")}
-            style={{ resize: "none" }}
-            maxLength={100}
-            minLength={1}
-          ></textarea>
-          <select
-            value={selectedEvent.course}
-            required
-            onChange={(e) => handleInputChange(e, "course")}
-          >
-            <option value="">Choose a course</option>
-            <option value="HTML">HTML</option>
-            <option value="CSS">CSS</option>
-            <option value="JAVASCRIPT">JavaScript</option>
-            <option value="REACT">React</option>
-            <option value="VUE">Vue</option>
-            <option value="ANGULAR">Angular</option>
-          </select>
+        <Modal onClose={() => setShowModal(false)} onDelete={handleDeleteEvent}>
+          <div className="modal-container">
+            {/* Date and time */}
+            <div className="date-time">
+              <span>From:{new Date(selectedEvent.start).toLocaleString()}</span>
+              <span>to: {new Date(selectedEvent.end).toLocaleString()}</span>
+            </div>
 
-          <button className="save-button" onClick={handleSaveEvent}>
-            Save Event
-          </button>
-          {selectedEvent.status === "active" && <></>}
+            {/* Event name input */}
+            <input
+              className="event-name"
+              type="text"
+              placeholder="Event Name"
+              value={selectedEvent.title}
+              onChange={(e) => handleInputChange(e, "title")}
+            />
+
+            {/* Event description textarea */}
+            <textarea
+              className="event-description"
+              placeholder="Event Description"
+              value={selectedEvent.description}
+              onChange={(e) => handleInputChange(e, "description")}
+              maxLength={100}
+              minLength={1}
+            ></textarea>
+
+            {/* Course select */}
+            <select
+              className="course-select"
+              value={selectedEvent.course}
+              required
+              onChange={(e) => handleInputChange(e, "course")}
+            >
+              <option value="">Choose a course</option>
+              <option value="HTML">HTML</option>
+              <option value="CSS">CSS</option>
+              <option value="JAVASCRIPT">JavaScript</option>
+              <option value="REACT">React</option>
+              <option value="VUE">Vue</option>
+              <option value="ANGULAR">Angular</option>
+            </select>
+
+            {/* Save button */}
+            <button className="save-button" onClick={handleSaveEvent}>
+              Save Event
+            </button>
+
+            {/* Status */}
+            {selectedEvent.status === "active" && (
+              <div className="status">Active</div>
+            )}
+          </div>
         </Modal>
       )}
+
       {deleteMode && (
         <DeleteEventModal
           eventId={selectedEvent.id}

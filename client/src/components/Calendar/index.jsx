@@ -79,11 +79,17 @@ const Calendar = () => {
       setEvents((prevEvents) => [...prevEvents, data.event]);
       calendarRef.current.getApi();
     };
+    const scheduleNotFounded = (data) => {
+      console.log("event deleted - not found available teacher", data);
+      toast.info(`server : event ${data.course} deleted  from DB`);
+setDeleteMode(false)
+    };
     socketInstance.on("message-from-server", handleMessageFromServer);
     socketInstance.on("scheduleCreated", handleMessageCreatedFromServer);
     socketInstance.on("scheduleDeleted", handleMessageDeletedFromServer);
     socketInstance.on("scheduleUpdated", handleMessageUpdatedFromServer);
     socketInstance.on("eventAssigned", handleAssignTask);
+    socketInstance.on("event-not-founded", scheduleNotFounded);
     socketInstance.on("disconnect", () => {
       console.log("Socket disconnected");
     });
@@ -96,6 +102,7 @@ const Calendar = () => {
       socketInstance.off("scheduleUpdated", handleMessageUpdatedFromServer);
       socketInstance.off("scheduleDeleted", handleMessageDeletedFromServer);
       socketInstance.off("eventAssigned", handleAssignTask);
+      socketInstance.off("event-not-founded", scheduleNotFounded);
     };
   }, [user]);
 
@@ -335,7 +342,7 @@ const Calendar = () => {
       if (response.status >= 200 && response.status < 300) {
         // Update events after successful deletion
         setEvents(events.filter((event) => event.id !== selectedEvent.id));
-        toast.success("Event successfully deleted.");
+        // toast.success("Event successfully deleted.");
       } else {
         console.error("Error deleting event: Unexpected response", response);
       }
@@ -419,6 +426,17 @@ const Calendar = () => {
   const handleCourseChange = (e) => {
     const selectedCourse = e.target.value;
     setFilterCourse(selectedCourse);
+  };
+  const fetchAllAvailable = async () => {
+    const response = await axios.get(
+      `${process.env.REACT_APP_ENDPOINT}/available/${selectedEvent.id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      }
+    );
+    console.log("response", response);
   };
   return (
     <div style={{ margin: "5rem 0" }}>
@@ -527,6 +545,7 @@ const Calendar = () => {
             <button className="save-button" onClick={handleSaveEvent}>
               Save Event
             </button>
+            <button onClick={fetchAllAvailable}>fetch all available</button>
 
             {/* Status */}
             {selectedEvent.status === "active" && (

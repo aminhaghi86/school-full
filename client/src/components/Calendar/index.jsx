@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
+import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -320,6 +321,7 @@ const Calendar = () => {
         <button onClick={() => changeView("today")}>Today</button>
         <button onClick={() => changeView("timeGridWeek")}>Week</button>
         <button onClick={() => changeView("dayGridMonth")}>Month</button>
+        <button onClick={() => changeView("listMonth")}>List</button>
       </div>
       <FullCalendar
         slotMinTime="08:00:00"
@@ -327,7 +329,7 @@ const Calendar = () => {
         nowIndicator={true}
         now={new Date()}
         ref={calendarRef}
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
         initialView={"timeGridWeek"}
         headerToolbar={{
           start: (() => {
@@ -337,6 +339,8 @@ const Calendar = () => {
               case "timeGridWeek":
                 return "prev,next";
               case "dayGridMonth":
+                return "prev,next";
+              case "listMonth":
                 return "prev,next";
               default:
                 return "";

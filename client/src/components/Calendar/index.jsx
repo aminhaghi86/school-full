@@ -324,6 +324,7 @@ const Calendar = () => {
         <button onClick={() => changeView("listMonth")}>List</button>
       </div>
       <FullCalendar
+      height= '78vh'
         slotMinTime="08:00:00"
         slotMaxTime="17:00:00"
         nowIndicator={true}

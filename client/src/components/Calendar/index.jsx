@@ -27,6 +27,7 @@ const Calendar = () => {
   const [deleteMode, setDeleteMode] = useState(false);
   const [calendarView, setCalendarView] = useState("timeGridWeek");
   const calendarRef = useRef(null);
+  const [filterCourse, setFilterCourse] = useState("ALL");
   useEffect(() => {
     if (!user) return;
 
@@ -98,15 +99,20 @@ const Calendar = () => {
           "Cache-Control": "no-cache",
         },
       });
-      const fetchedEvents = response.data.map((event) => ({
+      let fetchedEvents = response.data.map((event) => ({
         ...event,
         className: `event-${event.status}`,
       }));
+      if (filterCourse !== "ALL") {
+        fetchedEvents = fetchedEvents.filter(
+          (event) => event.course === filterCourse
+        );
+      }
       setEvents(fetchedEvents);
     } catch (error) {
       console.log(error);
     }
-  }, [user]);
+  }, [user, filterCourse]);
 
   const handleSelect = (selectInfo) => {
     setSelectedEvent({
@@ -160,6 +166,8 @@ const Calendar = () => {
   };
 
   const handleViewChange = (view, currentView) => {
+    console.log("view", view);
+    console.log("currentvire", currentView);
     setCalendarView(currentView.title);
   };
 
@@ -313,10 +321,24 @@ const Calendar = () => {
       setEvents([]);
     };
   }, [user, fetchEvents]);
-
+  const handleCourseChange = (e) => {
+    const selectedCourse = e.target.value;
+    setFilterCourse(selectedCourse);
+  };
   return (
     <div style={{ margin: "5rem 0" }}>
       <ToastContainer position="bottom-left" autoClose={1500} />
+      <div>
+        <select value={filterCourse} onChange={handleCourseChange}>
+          <option value="ALL">All</option>
+          <option value="HTML">HTML</option>
+          <option value="CSS">CSS</option>
+          <option value="JAVASCRIPT">JavaScript</option>
+          <option value="REACT">React</option>
+          <option value="VUE">Vue</option>
+          <option value="ANGULAR">Angular</option>
+        </select>
+      </div>
       <div>
         <button onClick={() => changeView("today")}>Today</button>
         <button onClick={() => changeView("timeGridWeek")}>Week</button>
@@ -324,7 +346,7 @@ const Calendar = () => {
         <button onClick={() => changeView("listMonth")}>List</button>
       </div>
       <FullCalendar
-      height= '78vh'
+        height="78vh"
         slotMinTime="08:00:00"
         slotMaxTime="17:00:00"
         nowIndicator={true}

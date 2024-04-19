@@ -77,6 +77,7 @@ const Calendar = () => {
         `server : event comes  from ${data.sendUser}to your canlendar`
       );
       setEvents((prevEvents) => [...prevEvents, data.event]);
+      calendarRef.current.getApi();
     };
     socketInstance.on("message-from-server", handleMessageFromServer);
     socketInstance.on("scheduleCreated", handleMessageCreatedFromServer);
@@ -260,34 +261,61 @@ const Calendar = () => {
       start: resizeInfo.event.startStr,
       end: resizeInfo.event.endStr,
       title: resizeInfo.event.title,
-      description: resizeInfo.event.description,
-      course: resizeInfo.event.course || "HTML",
+      description: resizeInfo.event.extendedProps.description,
+      course: resizeInfo.event.extendedProps.course,
     };
+
+    // Check if the event overlaps with any existing (excluding itself)
+    const isOverlap = isEventOverlap(
+      new Date(updatedEvent.start),
+      new Date(updatedEvent.end),
+      updatedEvent.id
+    );
+
+    if (isOverlap) {
+      toast.error("Event times conflict with an existing event.");
+      resizeInfo.revert(); // Revert the event back to its original duration
+      return;
+    }
+
     try {
+      // Update the event in the backend
       const response = await axios.put(
         `${process.env.REACT_APP_ENDPOINT}/${updatedEvent.id}`,
         updatedEvent,
         {
           headers: {
             Authorization: `Bearer ${user.token}`,
-            cache: "no-cache",
+            "Cache-Control": "no-cache",
           },
         }
       );
+
       if (response.status >= 200 && response.status < 300) {
         const updatedEventData = response.data;
-        setEvents(
-          events.map((event) =>
-            event.id === updatedEventData.id ? updatedEventData : event
+
+        // Update events state with the new event data
+        setEvents((prevEvents) =>
+          prevEvents.map((event) =>
+            event.id === updatedEventData.id
+              ? { ...event, ...updatedEventData }
+              : event
           )
         );
+
+        toast.success("Event updated successfully.");
       } else {
+        toast.error("Failed to update event.");
         console.error("Error updating event: Unexpected response", response);
+        resizeInfo.revert(); // In case of server errors, revert the event duration change
       }
     } catch (error) {
+      toast.error("An error occurred while updating the event.");
       console.error("Error updating event:", error);
+      resizeInfo.revert(); // Revert the event back to its original duration
     }
   };
+
   const handleDeleteEvent = async () => {
     try {
       if (!user || !selectedEvent) {
@@ -370,7 +398,7 @@ const Calendar = () => {
       }
 
       toast.success(
-        `Event ${selectedEvent.id ? "updated" : "added"} successfully.`
+        `client : Event ${selectedEvent.id ? "updated" : "added"} successfully.`
       );
       setSelectedEvent(null);
       setShowModal(false);

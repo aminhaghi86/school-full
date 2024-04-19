@@ -135,7 +135,7 @@ const findAllAvailableTeachers = async (start, end) => {
 const deleteSchedule = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    // const userId = req.user.id;
 
     const scheduleToDelete = await Schedule.findByPk(id);
     if (!scheduleToDelete) {

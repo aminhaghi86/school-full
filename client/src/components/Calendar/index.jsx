@@ -77,6 +77,7 @@ const Calendar = () => {
         `server : event comes  from ${data.sendUser}to your canlendar`
       );
       setEvents((prevEvents) => [...prevEvents, data.event]);
+      calendarRef.current.getApi();
     };
     socketInstance.on("message-from-server", handleMessageFromServer);
     socketInstance.on("scheduleCreated", handleMessageCreatedFromServer);
@@ -124,15 +125,26 @@ const Calendar = () => {
   }, [user, filterCourse]);
 
   const handleSelect = (selectInfo) => {
-    setSelectedEvent({
-      id: selectInfo.id,
-      start: selectInfo.startStr,
-      end: selectInfo.endStr,
-      title: selectInfo.title,
-      description: selectInfo.description,
-      course: "",
-    });
-    setShowModal(true);
+    const start = selectInfo.start;
+    const end = selectInfo.end;
+
+    const isOverlap = isEventOverlap(start, end);
+
+    if (!isOverlap) {
+      setSelectedEvent({
+        id: selectInfo.id,
+        start: selectInfo.startStr,
+        end: selectInfo.endStr,
+        title: selectInfo.title,
+        description: selectInfo.description,
+        course: selectInfo.course,
+      });
+      setShowModal(true);
+    } else {
+      toast.error(
+        "This time slot is already booked. Please choose another time."
+      );
+    }
   };
 
   const handleEditEvent = (clickInfo) => {
@@ -174,6 +186,15 @@ const Calendar = () => {
     }
   };
 
+  const isEventOverlap = (startDate, endDate, ignoreEventId = null) => {
+    return events.some((event) => {
+      if (ignoreEventId === event.id) {
+        return false;
+      }
+      return startDate < new Date(event.end) && new Date(event.start) < endDate;
+    });
+  };
+
   const handleViewChange = (view, currentView) => {
     console.log("view", view);
     console.log("currentvire", currentView);
@@ -181,38 +202,56 @@ const Calendar = () => {
   };
 
   const handleEventDrop = async (dropInfo) => {
-    const { id, startStr, endStr, title, extendedProps } = dropInfo.event;
-    const updatedEvent = {
-      id,
-      start: startStr,
-      end: endStr,
-      title,
-      description: extendedProps.description,
-      course: extendedProps.course || "HTML",
-    };
+    const startDate = dropInfo.event.start;
+    const endDate = dropInfo.event.end;
+    const movedEventId = dropInfo.event.id;
 
-    try {
-      const response = await axios.put(
-        `${process.env.REACT_APP_ENDPOINT}/${id}`,
-        updatedEvent,
-        {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        }
-      );
+    const isOverlap = isEventOverlap(startDate, endDate, movedEventId);
+    if (!isOverlap) {
+      // No overlap found, continue with updating the event
+      const updatedEvent = {
+        id: movedEventId,
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+        title: dropInfo.event.title,
+        description: dropInfo.event.extendedProps.description,
+        course: dropInfo.event.extendedProps.course || "HTML",
+      };
 
-      if (response.status >= 200 && response.status < 300) {
-        const updatedEventData = response.data;
-        const updatedEvents = events.map((event) =>
-          event.id === updatedEventData.id ? updatedEventData : event
+      try {
+        const response = await axios.put(
+          `${process.env.REACT_APP_ENDPOINT}/${movedEventId}`,
+          updatedEvent,
+          {
+            headers: {
+              Authorization: `Bearer ${user.token}`,
+            },
+          }
         );
-        setEvents(updatedEvents);
-      } else {
-        console.error("Error updating event: Unexpected response", response);
+
+        if (response.status >= 200 && response.status < 300) {
+          const updatedEventData = response.data;
+          setEvents(
+            events.map((event) =>
+              event.id === updatedEventData.id ? updatedEventData : event
+            )
+          );
+          toast.success("Event successfully updated.");
+        } else {
+          console.error("Error updating event: Unexpected response", response);
+          dropInfo.revert(); // Revert the event back to its original position
+        }
+      } catch (error) {
+        console.error("Error updating event:", error);
+        toast.error("Failed to update the event.");
+        dropInfo.revert(); // Revert the event back to its original position
       }
-    } catch (error) {
-      console.error("Error updating event:", error);
+    } else {
+      // Overlap found, revert the changes and alert the user
+      toast.error(
+        "Cannot move to this time slot as it conflicts with other events."
+      );
+      dropInfo.revert();
     }
   };
 
@@ -222,34 +261,61 @@ const Calendar = () => {
       start: resizeInfo.event.startStr,
       end: resizeInfo.event.endStr,
       title: resizeInfo.event.title,
-      description: resizeInfo.event.description,
-      course: resizeInfo.event.course || "HTML",
+      description: resizeInfo.event.extendedProps.description,
+      course: resizeInfo.event.extendedProps.course,
     };
+
+    // Check if the event overlaps with any existing (excluding itself)
+    const isOverlap = isEventOverlap(
+      new Date(updatedEvent.start),
+      new Date(updatedEvent.end),
+      updatedEvent.id
+    );
+
+    if (isOverlap) {
+      toast.error("Event times conflict with an existing event.");
+      resizeInfo.revert(); // Revert the event back to its original duration
+      return;
+    }
+
     try {
+      // Update the event in the backend
       const response = await axios.put(
         `${process.env.REACT_APP_ENDPOINT}/${updatedEvent.id}`,
         updatedEvent,
         {
           headers: {
             Authorization: `Bearer ${user.token}`,
-            cache: "no-cache",
+            "Cache-Control": "no-cache",
           },
         }
       );
+
       if (response.status >= 200 && response.status < 300) {
         const updatedEventData = response.data;
-        setEvents(
-          events.map((event) =>
-            event.id === updatedEventData.id ? updatedEventData : event
+
+        // Update events state with the new event data
+        setEvents((prevEvents) =>
+          prevEvents.map((event) =>
+            event.id === updatedEventData.id
+              ? { ...event, ...updatedEventData }
+              : event
           )
         );
+
+        toast.success("Event updated successfully.");
       } else {
+        toast.error("Failed to update event.");
         console.error("Error updating event: Unexpected response", response);
+        resizeInfo.revert(); // In case of server errors, revert the event duration change
       }
     } catch (error) {
+      toast.error("An error occurred while updating the event.");
       console.error("Error updating event:", error);
+      resizeInfo.revert(); // Revert the event back to its original duration
     }
   };
+
   const handleDeleteEvent = async () => {
     try {
       if (!user || !selectedEvent) {
@@ -282,17 +348,32 @@ const Calendar = () => {
   };
 
   const handleSaveEvent = async () => {
-    if (!user || !selectedEvent || !selectedEvent.course) {
+    // Prevent saving if mandatory fields are not filled or if no user is logged in
+    if (
+      !user ||
+      !selectedEvent ||
+      !selectedEvent.title ||
+      !selectedEvent.course
+    ) {
+      toast.error("Please fill out all required fields.");
       return;
     }
 
+    const start = new Date(selectedEvent.start);
+    const end = new Date(selectedEvent.end);
+    const isOverlap = isEventOverlap(start, end, selectedEvent.id);
+
+    if (isOverlap) {
+      toast.error("Event times conflict with an existing event.");
+      return;
+    }
+
+    const url = selectedEvent.id
+      ? `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`
+      : process.env.REACT_APP_ENDPOINT;
+    const method = selectedEvent.id ? "PUT" : "POST";
+
     try {
-      const url = selectedEvent.id
-        ? `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`
-        : `${process.env.REACT_APP_ENDPOINT}`;
-
-      const method = selectedEvent.id ? "PUT" : "POST";
-
       const response = await axios({
         method,
         url,
@@ -303,6 +384,7 @@ const Calendar = () => {
       });
 
       const updatedEventData = response.data;
+
       if (selectedEvent.id) {
         // Update existing event
         setEvents(
@@ -311,15 +393,19 @@ const Calendar = () => {
           )
         );
       } else {
-        // Create new event
+        // Add new event
         setEvents([...events, updatedEventData]);
       }
+
+      toast.success(
+        `client : Event ${selectedEvent.id ? "updated" : "added"} successfully.`
+      );
+      setSelectedEvent(null);
+      setShowModal(false);
     } catch (error) {
       console.error("Error saving event:", error);
+      toast.error("Failed to save the event.");
     }
-
-    setSelectedEvent(null);
-    setShowModal(false);
   };
 
   useEffect(() => {

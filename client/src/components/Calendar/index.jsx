@@ -124,15 +124,34 @@ const Calendar = () => {
   }, [user, filterCourse]);
 
   const handleSelect = (selectInfo) => {
-    setSelectedEvent({
-      id: selectInfo.id,
-      start: selectInfo.startStr,
-      end: selectInfo.endStr,
-      title: selectInfo.title,
-      description: selectInfo.description,
-      course: "",
+    const startDate = selectInfo.start;
+    const endDate = selectInfo.end;
+
+    // Check for any event that overlaps with this time range
+    const isOverlap = events.some((event) => {
+      return (
+        (startDate >= new Date(event.start) &&
+          startDate < new Date(event.end)) ||
+        (endDate > new Date(event.start) && endDate <= new Date(event.end)) ||
+        (new Date(event.start) >= startDate && new Date(event.start) < endDate)
+      );
     });
-    setShowModal(true);
+
+    if (!isOverlap) {
+      setSelectedEvent({
+        id: selectInfo.id,
+        start: selectInfo.startStr,
+        end: selectInfo.endStr,
+        title: selectInfo.title,
+        description: selectInfo.description,
+        course: selectInfo.course,
+      });
+      setShowModal(true);
+    } else {
+      toast.error(
+        "This time slot is already booked. Please choose another time."
+      );
+    }
   };
 
   const handleEditEvent = (clickInfo) => {
@@ -180,39 +199,103 @@ const Calendar = () => {
     setCalendarView(currentView.title);
   };
 
+  // const handleEventDrop = async (dropInfo) => {
+  //   const { id, startStr, endStr, title, extendedProps } = dropInfo.event;
+  //   const updatedEvent = {
+  //     id,
+  //     start: startStr,
+  //     end: endStr,
+  //     title,
+  //     description: extendedProps.description,
+  //     course: extendedProps.course || "HTML",
+  //   };
+
+  //   try {
+  //     const response = await axios.put(
+  //       `${process.env.REACT_APP_ENDPOINT}/${id}`,
+  //       updatedEvent,
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${user.token}`,
+  //         },
+  //       }
+  //     );
+
+  //     if (response.status >= 200 && response.status < 300) {
+  //       const updatedEventData = response.data;
+  //       const updatedEvents = events.map((event) =>
+  //         event.id === updatedEventData.id ? updatedEventData : event
+  //       );
+  //       setEvents(updatedEvents);
+  //     } else {
+  //       console.error("Error updating event: Unexpected response", response);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error updating event:", error);
+  //   }
+  // };
   const handleEventDrop = async (dropInfo) => {
-    const { id, startStr, endStr, title, extendedProps } = dropInfo.event;
-    const updatedEvent = {
-      id,
-      start: startStr,
-      end: endStr,
-      title,
-      description: extendedProps.description,
-      course: extendedProps.course || "HTML",
-    };
+    const startDate = dropInfo.event.start;
+    const endDate = dropInfo.event.end;
+    const movedEventId = dropInfo.event.id;
 
-    try {
-      const response = await axios.put(
-        `${process.env.REACT_APP_ENDPOINT}/${id}`,
-        updatedEvent,
-        {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        }
+    // Check for any event that overlaps, excluding the event being dropped
+    const isOverlap = events.some((event) => {
+      return (
+        event.id !== movedEventId &&
+        ((startDate >= new Date(event.start) &&
+          startDate < new Date(event.end)) ||
+          (endDate > new Date(event.start) && endDate <= new Date(event.end)) ||
+          (new Date(event.start) >= startDate &&
+            new Date(event.start) < endDate))
       );
+    });
 
-      if (response.status >= 200 && response.status < 300) {
-        const updatedEventData = response.data;
-        const updatedEvents = events.map((event) =>
-          event.id === updatedEventData.id ? updatedEventData : event
+    if (!isOverlap) {
+      // No overlap found, continue with updating the event
+      const updatedEvent = {
+        id: movedEventId,
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+        title: dropInfo.event.title,
+        description: dropInfo.event.extendedProps.description,
+        course: dropInfo.event.extendedProps.course || "HTML",
+      };
+
+      try {
+        const response = await axios.put(
+          `${process.env.REACT_APP_ENDPOINT}/${movedEventId}`,
+          updatedEvent,
+          {
+            headers: {
+              Authorization: `Bearer ${user.token}`,
+            },
+          }
         );
-        setEvents(updatedEvents);
-      } else {
-        console.error("Error updating event: Unexpected response", response);
+
+        if (response.status >= 200 && response.status < 300) {
+          const updatedEventData = response.data;
+          setEvents(
+            events.map((event) =>
+              event.id === updatedEventData.id ? updatedEventData : event
+            )
+          );
+          toast.success("Event successfully updated.");
+        } else {
+          console.error("Error updating event: Unexpected response", response);
+          dropInfo.revert(); // Revert the event back to its original position
+        }
+      } catch (error) {
+        console.error("Error updating event:", error);
+        toast.error("Failed to update the event.");
+        dropInfo.revert(); // Revert the event back to its original position
       }
-    } catch (error) {
-      console.error("Error updating event:", error);
+    } else {
+      // Overlap found, revert the changes and alert the user
+      toast.error(
+        "Cannot move to this time slot as it conflicts with other events."
+      );
+      dropInfo.revert();
     }
   };
 

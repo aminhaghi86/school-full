@@ -82,6 +82,7 @@ const Calendar = () => {
     const scheduleNotFounded = (data) => {
       console.log("event deleted - not found available teacher", data);
       toast.info(`server : event ${data.course} deleted  from DB`);
+setDeleteMode(false)
     };
     socketInstance.on("message-from-server", handleMessageFromServer);
     socketInstance.on("scheduleCreated", handleMessageCreatedFromServer);

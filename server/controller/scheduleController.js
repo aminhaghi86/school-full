@@ -135,6 +135,8 @@ const findAllAvailableTeachers = async (start, end) => {
 const deleteSchedule = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
+    const io = getIO();
     // const userId = req.user.id;
 
     const scheduleToDelete = await Schedule.findByPk(id);
@@ -148,26 +150,36 @@ const deleteSchedule = async (req, res) => {
     const availableTeachers = await findAllAvailableTeachers(start, end);
 
     if (availableTeachers.length === 0) {
-      // No available teachers found, can't proceed with delete
-      return res.status(409).json({
-        message: "No available teachers to assign, canceling deletion.",
+      // No available teachers found, delete the schedule
+      await scheduleToDelete.destroy();
+      const teacherSocketId = getTeacherSocketId(userId);
+      console.log("Retrieved teacher socket ID:", teacherSocketId);
+      if (teacherSocketId) {
+        io.to(teacherSocketId).emit("event-not-founded", scheduleToDelete);
+      } else {
+        console.log("No teacher socket ID found for user ID:", userId);
+      }
+      return res.status(200).json({ message: "Schedule deleted." });
+    } else {
+      // If there are available teachers, let the client know so they can choose one
+      return res.status(200).json({
+        message:
+          "Available teachers found. Please assign a teacher before deleting.",
+        availableTeachers: availableTeachers,
       });
     }
-
-    // If there are available teachers, let the client know so they can choose one
-    return res.status(200).json({
-      message:
-        "Available teachers found. Please assign a teacher before deleting.",
-      availableTeachers: availableTeachers,
-    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
+
+
 const getAvailableTeachers = async (req, res) => {
   try {
+    console.log('reqreq',req);
+    console.log('resres',res);
     const { eventId } = req.query;
     console.log("eventId", eventId);
     // Check if eventId is not provided or null.

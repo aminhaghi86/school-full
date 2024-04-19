@@ -124,18 +124,10 @@ const Calendar = () => {
   }, [user, filterCourse]);
 
   const handleSelect = (selectInfo) => {
-    const startDate = selectInfo.start;
-    const endDate = selectInfo.end;
+    const start = selectInfo.start;
+    const end = selectInfo.end;
 
-    // Check for any event that overlaps with this time range
-    const isOverlap = events.some((event) => {
-      return (
-        (startDate >= new Date(event.start) &&
-          startDate < new Date(event.end)) ||
-        (endDate > new Date(event.start) && endDate <= new Date(event.end)) ||
-        (new Date(event.start) >= startDate && new Date(event.start) < endDate)
-      );
-    });
+    const isOverlap = isEventOverlap(start, end);
 
     if (!isOverlap) {
       setSelectedEvent({
@@ -193,64 +185,27 @@ const Calendar = () => {
     }
   };
 
+  const isEventOverlap = (startDate, endDate, ignoreEventId = null) => {
+    return events.some((event) => {
+      if (ignoreEventId === event.id) {
+        return false;
+      }
+      return startDate < new Date(event.end) && new Date(event.start) < endDate;
+    });
+  };
+
   const handleViewChange = (view, currentView) => {
     console.log("view", view);
     console.log("currentvire", currentView);
     setCalendarView(currentView.title);
   };
 
-  // const handleEventDrop = async (dropInfo) => {
-  //   const { id, startStr, endStr, title, extendedProps } = dropInfo.event;
-  //   const updatedEvent = {
-  //     id,
-  //     start: startStr,
-  //     end: endStr,
-  //     title,
-  //     description: extendedProps.description,
-  //     course: extendedProps.course || "HTML",
-  //   };
-
-  //   try {
-  //     const response = await axios.put(
-  //       `${process.env.REACT_APP_ENDPOINT}/${id}`,
-  //       updatedEvent,
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${user.token}`,
-  //         },
-  //       }
-  //     );
-
-  //     if (response.status >= 200 && response.status < 300) {
-  //       const updatedEventData = response.data;
-  //       const updatedEvents = events.map((event) =>
-  //         event.id === updatedEventData.id ? updatedEventData : event
-  //       );
-  //       setEvents(updatedEvents);
-  //     } else {
-  //       console.error("Error updating event: Unexpected response", response);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error updating event:", error);
-  //   }
-  // };
   const handleEventDrop = async (dropInfo) => {
     const startDate = dropInfo.event.start;
     const endDate = dropInfo.event.end;
     const movedEventId = dropInfo.event.id;
 
-    // Check for any event that overlaps, excluding the event being dropped
-    const isOverlap = events.some((event) => {
-      return (
-        event.id !== movedEventId &&
-        ((startDate >= new Date(event.start) &&
-          startDate < new Date(event.end)) ||
-          (endDate > new Date(event.start) && endDate <= new Date(event.end)) ||
-          (new Date(event.start) >= startDate &&
-            new Date(event.start) < endDate))
-      );
-    });
-
+    const isOverlap = isEventOverlap(startDate, endDate, movedEventId);
     if (!isOverlap) {
       // No overlap found, continue with updating the event
       const updatedEvent = {
@@ -365,17 +320,32 @@ const Calendar = () => {
   };
 
   const handleSaveEvent = async () => {
-    if (!user || !selectedEvent || !selectedEvent.course) {
+    // Prevent saving if mandatory fields are not filled or if no user is logged in
+    if (
+      !user ||
+      !selectedEvent ||
+      !selectedEvent.title ||
+      !selectedEvent.course
+    ) {
+      toast.error("Please fill out all required fields.");
       return;
     }
 
+    const start = new Date(selectedEvent.start);
+    const end = new Date(selectedEvent.end);
+    const isOverlap = isEventOverlap(start, end, selectedEvent.id);
+
+    if (isOverlap) {
+      toast.error("Event times conflict with an existing event.");
+      return;
+    }
+
+    const url = selectedEvent.id
+      ? `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`
+      : process.env.REACT_APP_ENDPOINT;
+    const method = selectedEvent.id ? "PUT" : "POST";
+
     try {
-      const url = selectedEvent.id
-        ? `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`
-        : `${process.env.REACT_APP_ENDPOINT}`;
-
-      const method = selectedEvent.id ? "PUT" : "POST";
-
       const response = await axios({
         method,
         url,
@@ -386,6 +356,7 @@ const Calendar = () => {
       });
 
       const updatedEventData = response.data;
+
       if (selectedEvent.id) {
         // Update existing event
         setEvents(
@@ -394,15 +365,19 @@ const Calendar = () => {
           )
         );
       } else {
-        // Create new event
+        // Add new event
         setEvents([...events, updatedEventData]);
       }
+
+      toast.success(
+        `Event ${selectedEvent.id ? "updated" : "added"} successfully.`
+      );
+      setSelectedEvent(null);
+      setShowModal(false);
     } catch (error) {
       console.error("Error saving event:", error);
+      toast.error("Failed to save the event.");
     }
-
-    setSelectedEvent(null);
-    setShowModal(false);
   };
 
   useEffect(() => {

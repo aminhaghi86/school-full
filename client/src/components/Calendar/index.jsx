@@ -28,6 +28,15 @@ const Calendar = () => {
   const [calendarView, setCalendarView] = useState("timeGridWeek");
   const calendarRef = useRef(null);
   const [filterCourse, setFilterCourse] = useState("ALL");
+  const courses = [
+    { value: "ALL", label: "All" },
+    { value: "HTML", label: "HTML" },
+    { value: "CSS", label: "CSS" },
+    { value: "JAVASCRIPT", label: "JavaScript" },
+    { value: "REACT", label: "React" },
+    { value: "VUE", label: "Vue" },
+    { value: "ANGULAR", label: "Angular" },
+  ];
   useEffect(() => {
     if (!user) return;
 
@@ -329,15 +338,18 @@ const Calendar = () => {
     <div style={{ margin: "5rem 0" }}>
       <ToastContainer position="bottom-left" autoClose={1500} />
       <div>
-        <select value={filterCourse} onChange={handleCourseChange}>
-          <option value="ALL">All</option>
-          <option value="HTML">HTML</option>
-          <option value="CSS">CSS</option>
-          <option value="JAVASCRIPT">JavaScript</option>
-          <option value="REACT">React</option>
-          <option value="VUE">Vue</option>
-          <option value="ANGULAR">Angular</option>
-        </select>
+        {courses.map((course) => (
+          <label key={course.value}>
+            <input
+              type="radio"
+              value={course.value}
+              name="course"
+              checked={filterCourse === course.value}
+              onChange={handleCourseChange}
+            />
+            {course.label}
+          </label>
+        ))}
       </div>
       <div>
         <button onClick={() => changeView("today")}>Today</button>

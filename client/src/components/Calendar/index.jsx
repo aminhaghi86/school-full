@@ -323,6 +323,18 @@ const Calendar = () => {
       resizeInfo.revert(); // Revert the event back to its original duration
     }
   };
+  const handleDeleteClick = async () => {
+    const confirmDelete = window.confirm('Are you sure you want to delete this event?');
+    
+    if (confirmDelete) {
+      // User confirmed; proceed with deletion
+      await handleDeleteEvent();
+    } else {
+      // User canceled; no further action needed
+      console.log('Deletion cancelled by user.');
+    }
+  };
+  
 
   const handleDeleteEvent = async () => {
     try {
@@ -502,7 +514,7 @@ const Calendar = () => {
         eventResize={handleEventResize}
       />
       {showModal && (
-        <Modal onClose={() => setShowModal(false)} onDelete={handleDeleteEvent}>
+        <Modal onClose={() => setShowModal(false)} onDelete={handleDeleteClick}>
           <div className="modal-container">
             {/* Date and time */}
             <div className="date-time">

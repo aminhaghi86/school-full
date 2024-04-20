@@ -22,7 +22,7 @@ const DeleteEventModal = ({ eventId, onClose }) => {
           // Set the initial isSelected property for each teacher
           const teachersWithSelection = teachers.map((teacher) => ({
             ...teacher,
-            isSelected: false
+            isSelected: false,
           }));
           setAvailableTeachers(teachersWithSelection);
           setLoading(false);
@@ -40,69 +40,51 @@ const DeleteEventModal = ({ eventId, onClose }) => {
     return () => clearTimeout(timer); // Clear timeout when the component unmounts or dependencies change
   }, [eventId, user.token]);
 
-  // Handler for teacher selection change
-  const handleSelectionChange = (teacherId) => {
-    setAvailableTeachers(prevAvailableTeachers =>
-      prevAvailableTeachers.map(teacher => ({
-        ...teacher,
-        isSelected: teacher.id === teacherId ? !teacher.isSelected : teacher.isSelected,
-      }))
-    );
-  };
 
   // Handler for form submission
   const handleSubmit = async (event) => {
     event.preventDefault(); // Prevent default form submission behavior
 
-    const selectedTeacherIds = availableTeachers
-      .filter((teacher) => teacher.isSelected)
-      .map((teacher) => teacher.id);
-
-    if (selectedTeacherIds.length === 0) {
-      console.error('No teachers selected.');
-      return; // Exit the function if there are no teacher IDs to process
-    }
+    // Include IDs of all available teachers directly
+    const selectedTeacherIds = availableTeachers.map((teacher) => teacher.id);
 
     setLoading(true); // Set loading state for UI indication
 
     try {
       // Call "assignTeacher" with the array of teacher IDs
-      const responses = await assignTeacher(eventId, selectedTeacherIds, user.email, user.token);
+      const responses = await assignTeacher(
+        eventId,
+        selectedTeacherIds,
+        user.email,
+        user.token
+      );
 
-      // Handle the response according to your application's needs
-      console.log('Teachers assigned successfully:', responses);
-
-      // Close the modal or refresh the teacher list based on your app's requirements
+      console.log("Teachers assigned successfully:", responses);
       onClose();
     } catch (error) {
-      console.error('Error during form submission:', error);
+      console.error("Error during form submission:", error);
     }
 
-    setLoading(false); // Reset loading state after operation
+    setLoading(false); 
   };
 
   return (
     <div className="delete-event-modal">
       <h3>Select a Teacher:</h3>
-      {/* Display spinner while loading */}
       {loading && <Spinner />}
       <form onSubmit={handleSubmit}>
-        {/* Map through available teachers */}
         {availableTeachers.map((teacher) => (
           <div key={teacher.id} className="modal-inner">
             <label>
-              <input
-                type="checkbox"
-                
-                onChange={() => handleSelectionChange(teacher.id)}
-                checked={teacher.isSelected}
-              />
+              <input type="checkbox" checked={true} readOnly />
               {teacher.name}
             </label>
             <p>{teacher.email}</p>
           </div>
         ))}
-        <button type="submit">Assign Teachers</button>
+        <button type="submit">
+          {availableTeachers.length < 2 ? "Assign Teacher" : "Assign Teachers"}
+        </button>
       </form>
       {/* Cancel button */}
       <button onClick={onClose}>Cancel</button>

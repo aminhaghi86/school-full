@@ -3,7 +3,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
-import multiMonthPlugin from '@fullcalendar/multimonth'
+import multiMonthPlugin from "@fullcalendar/multimonth";
 import interactionPlugin from "@fullcalendar/interaction";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -83,7 +83,7 @@ const Calendar = () => {
     const scheduleNotFounded = (data) => {
       console.log("event deleted - not found available teacher", data);
       toast.info(`server : event ${data.course} deleted  from DB`);
-setDeleteMode(false)
+      setDeleteMode(false);
     };
     socketInstance.on("message-from-server", handleMessageFromServer);
     socketInstance.on("scheduleCreated", handleMessageCreatedFromServer);
@@ -428,17 +428,6 @@ setDeleteMode(false)
     const selectedCourse = e.target.value;
     setFilterCourse(selectedCourse);
   };
-  const fetchAllAvailable = async () => {
-    const response = await axios.get(
-      `${process.env.REACT_APP_ENDPOINT}/available/${selectedEvent.id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      }
-    );
-    console.log("response", response);
-  };
   return (
     <div style={{ margin: "5rem 0" }}>
       <ToastContainer position="bottom-left" autoClose={1500} />
@@ -460,7 +449,9 @@ setDeleteMode(false)
         <button onClick={() => changeView("today")}>Today</button>
         <button onClick={() => changeView("timeGridWeek")}>Week</button>
         <button onClick={() => changeView("dayGridMonth")}>Month</button>
-        <button onClick={() => changeView("multiMonthYear")}>Multi-Month</button>
+        <button onClick={() => changeView("multiMonthYear")}>
+          Multi-Month
+        </button>
         <button onClick={() => changeView("listMonth")}>List</button>
       </div>
       <FullCalendar
@@ -473,7 +464,13 @@ setDeleteMode(false)
         multiMonthMaxColumns={1}
         dayMaxEvents={true}
         ref={calendarRef}
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin,multiMonthPlugin]}
+        plugins={[
+          dayGridPlugin,
+          timeGridPlugin,
+          interactionPlugin,
+          listPlugin,
+          multiMonthPlugin,
+        ]}
         initialView={"timeGridWeek"}
         headerToolbar={{
           start: (() => {
@@ -550,7 +547,6 @@ setDeleteMode(false)
             <button className="save-button" onClick={handleSaveEvent}>
               Save Event
             </button>
-            <button onClick={fetchAllAvailable}>fetch all available</button>
 
             {/* Status */}
             {selectedEvent.status === "active" && (

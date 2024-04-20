@@ -483,6 +483,8 @@ const Calendar = () => {
                 return "prev,next";
               case "listMonth":
                 return "prev,next";
+              case "multiMonthYear":
+                return "prev,next";
               default:
                 return "";
             }

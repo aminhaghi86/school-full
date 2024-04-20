@@ -7,55 +7,80 @@ import "./deleteevent.css";
 const DeleteEventModal = ({ eventId, onClose }) => {
   // State variables
   const [availableTeachers, setAvailableTeachers] = useState([]);
-  const [selectedTeacherId, setSelectedTeacherId] = useState(null);
   const [loading, setLoading] = useState(false);
   const { user } = useAuthContext();
 
   // Effect hook to fetch available teachers
   useEffect(() => {
+    let timer;
+
     const fetchTeachers = async () => {
       setLoading(true);
       try {
-        // Simulating delay with setTimeout for spinner visibility
-        const timer = setTimeout(async () => {
+        timer = setTimeout(async () => {
           const teachers = await fetchAvailableTeachers(eventId, user.token);
-          setAvailableTeachers(teachers);
+          // Set the initial isSelected property for each teacher
+          const teachersWithSelection = teachers.map((teacher) => ({
+            ...teacher,
+            isSelected: false
+          }));
+          setAvailableTeachers(teachersWithSelection);
           setLoading(false);
-        }, 2000);
-
-        return () => clearTimeout(timer);
+        }, 2000); // Delay of 2 seconds
       } catch (error) {
         console.error("Failed to fetch available teachers:", error);
         setLoading(false);
       }
     };
 
-    fetchTeachers();
-  }, [eventId, user]);
+    if (eventId) {
+      fetchTeachers();
+    }
+
+    return () => clearTimeout(timer); // Clear timeout when the component unmounts or dependencies change
+  }, [eventId, user.token]);
 
   // Handler for teacher selection change
   const handleSelectionChange = (teacherId) => {
-    setSelectedTeacherId(teacherId);
+    setAvailableTeachers(prevAvailableTeachers =>
+      prevAvailableTeachers.map(teacher => ({
+        ...teacher,
+        isSelected: teacher.id === teacherId ? !teacher.isSelected : teacher.isSelected,
+      }))
+    );
   };
 
   // Handler for form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault(); // Prevent default form submission behavior
 
-    if (!selectedTeacherId) {
-      alert("Please select a teacher to assign before deleting");
-      return;
+    const selectedTeacherIds = availableTeachers
+      .filter((teacher) => teacher.isSelected)
+      .map((teacher) => teacher.id);
+
+    if (selectedTeacherIds.length === 0) {
+      console.error('No teachers selected.');
+      return; // Exit the function if there are no teacher IDs to process
     }
+
+    setLoading(true); // Set loading state for UI indication
 
     try {
-      await assignTeacher(eventId, selectedTeacherId, user.email, user.token);
+      // Call "assignTeacher" with the array of teacher IDs
+      const responses = await assignTeacher(eventId, selectedTeacherIds, user.email, user.token);
+
+      // Handle the response according to your application's needs
+      console.log('Teachers assigned successfully:', responses);
+
+      // Close the modal or refresh the teacher list based on your app's requirements
       onClose();
     } catch (error) {
-      console.error("Failed to assign teacher or delete schedule:", error);
+      console.error('Error during form submission:', error);
     }
+
+    setLoading(false); // Reset loading state after operation
   };
 
-  // JSX rendering
   return (
     <div className="delete-event-modal">
       <h3>Select a Teacher:</h3>
@@ -67,18 +92,17 @@ const DeleteEventModal = ({ eventId, onClose }) => {
           <div key={teacher.id} className="modal-inner">
             <label>
               <input
-                type="radio"
-                value={teacher.id}
-                checked={selectedTeacherId === teacher.id}
+                type="checkbox"
+                
                 onChange={() => handleSelectionChange(teacher.id)}
+                checked={teacher.isSelected}
               />
               {teacher.name}
             </label>
             <p>{teacher.email}</p>
           </div>
         ))}
-        {/* Display assign button if teacher is selected */}
-        {selectedTeacherId && <button type="submit">Assign Teacher</button>}
+        <button type="submit">Assign Teachers</button>
       </form>
       {/* Cancel button */}
       <button onClick={onClose}>Cancel</button>

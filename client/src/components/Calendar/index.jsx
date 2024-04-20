@@ -3,6 +3,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
+import multiMonthPlugin from '@fullcalendar/multimonth'
 import interactionPlugin from "@fullcalendar/interaction";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -459,6 +460,7 @@ setDeleteMode(false)
         <button onClick={() => changeView("today")}>Today</button>
         <button onClick={() => changeView("timeGridWeek")}>Week</button>
         <button onClick={() => changeView("dayGridMonth")}>Month</button>
+        <button onClick={() => changeView("multiMonthYear")}>Multi-Month</button>
         <button onClick={() => changeView("listMonth")}>List</button>
       </div>
       <FullCalendar
@@ -467,8 +469,11 @@ setDeleteMode(false)
         slotMaxTime="17:00:00"
         nowIndicator={true}
         now={new Date()}
+        navLinks={true}
+        multiMonthMaxColumns={1}
+        dayMaxEvents={true}
         ref={calendarRef}
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin,multiMonthPlugin]}
         initialView={"timeGridWeek"}
         headerToolbar={{
           start: (() => {

@@ -14,7 +14,6 @@ const { requireAuth } = require("../middleware/requireAuth");
 const setupRoutes = (app) => {
   const router = express.Router();
   router.use(requireAuth);
-
   router.get("/", getAllSchedules);
   router.get("/available-teachers", getAvailableTeachers);
   router.get("/:id", getScheduleById);

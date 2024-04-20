@@ -32,6 +32,7 @@ export async function assignTeacher(eventId, teacherIds, userEmail, token) {
     eventId,
     teacherIds, // This is now an array of ids directly
     email: userEmail,
+    token
   };
 
   const response = await fetch(

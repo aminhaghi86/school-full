@@ -204,100 +204,167 @@ const getAvailableTeachers = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-const assignTeacherToSchedule = async (req, teacherId) => {
-  try {
-    const io = getIO();
-    let t;
-    console.log("req req req after deleteing and the assing!", req.body);
-    const eventId = req.body.eventId;
-    console.log(`Assigning teacher to schedule with event ID: ${eventId}`);
-    const schedule = await Schedule.findByPk(eventId);
-    if (!schedule) {
-      return { success: false, message: "Schedule not found" };
-    }
-    console.log("schedule schedule schedule", schedule);
+// const assignTeacherToSchedule = async (req, teacherId) => {
+//   try {
+//     const io = getIO();
+//     let t;
+//     console.log("req req req after deleteing and the assing!", req.body);
+//     const eventId = req.body.eventId;
+//     console.log(`Assigning teacher to schedule with event ID: ${eventId}`);
+//     const schedule = await Schedule.findByPk(eventId);
+//     if (!schedule) {
+//       return { success: false, message: "Schedule not found" };
+//     }
+//     console.log("schedule schedule schedule", schedule);
 
-    await Schedule.create(
-      {
-        start: schedule.start,
-        end: schedule.end,
-        title: schedule.title,
-        description: schedule.description,
-        course: schedule.course,
-        userId: teacherId,
-        status: "accepted",
-      },
-      { transaction: t }
-    );
+//     await Schedule.create(
+//       {
+//         start: schedule.start,
+//         end: schedule.end,
+//         title: schedule.title,
+//         description: schedule.description,
+//         course: schedule.course,
+//         userId: teacherId,
+//         status: "accepted",
+//       },
+//       { transaction: t }
+//     );
 
-    //
-    const teacherSocketId = getTeacherSocketId(teacherId);
-    if (teacherSocketId) {
-      io.to(teacherSocketId).emit("eventAssigned", {
-        event: schedule,
-        sendUser: req.body.email,
-      });
+//     //
+//     const teacherSocketId = getTeacherSocketId(teacherId);
+//     if (teacherSocketId) {
+//       io.to(teacherSocketId).emit("eventAssigned", {
+//         event: schedule,
+//         sendUser: req.body.email,
+//       });
 
-      // Also, emit the event to the client side of the teacher
-    } else {
-      console.log("No socket found for teacher ID:", teacherId);
-    }
+//       // Also, emit the event to the client side of the teacher
+//     } else {
+//       console.log("No socket found for teacher ID:", teacherId);
+//     }
 
-    //
-    console.log("schedule.userId", schedule.userId);
+//     //
+//     console.log("schedule.userId", schedule.userId);
 
-    return { success: true };
-  } catch (error) {
-    console.error(error);
-    return { success: false, message: error.message };
-  }
-};
+//     return { success: true };
+//   } catch (error) {
+//     console.error(error);
+//     return { success: false, message: error.message };
+//   }
+// };
 
+// const assignnewschedule = async (req, res) => {
+//   try {
+//     console.log("Request dataaaaa body:", req.body);
+//     console.log("Request dataaaaa body:", req.headers);
+//     const { eventId, teacherId } = req.body;
+//     if (eventId === null || teacherId === null) {
+//       // Respond with a bad request error if validation fails.
+//       return res.status(400).json({ message: "eventID or teacherID is null" });
+//     }
+
+//     const result = await assignTeacherToSchedule(req, teacherId);
+
+//     if (!result.success) {
+//       return res.status(400).json({ message: result.message });
+//     }
+
+//     const deletedSchedule = await deleteScheduleById(eventId);
+
+//     if (!deletedSchedule) {
+//       return res
+//         .status(400)
+//         .json({ message: "Failed to delete schedule after assigning teacher" });
+//     }
+
+//     res.status(200).json({
+//       message: "Teacher assigned and schedule deleted",
+//       schedule: deletedSchedule,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res
+//       .status(500)
+//       .json({ message: "Internal server error", error: error.message });
+//   }
+// };
+
+// // Function to delete a schedule by its ID
+// const deleteScheduleById = async (id) => {
+//   const scheduleToDelete = await Schedule.findByPk(id);
+//   if (scheduleToDelete) {
+//     await scheduleToDelete.destroy();
+//     return scheduleToDelete;
+//   } else {
+//     return null; // or throw an error indicating the schedule was not found
+//   }
+// };
 const assignnewschedule = async (req, res) => {
+  const { eventId, teacherIds } = req.body; // Modify to accept an array of teacherIds
+  
+  if (!eventId || !teacherIds || !Array.isArray(teacherIds)) {
+    return res.status(400).json({ message: "Invalid parameters" });
+  }
+
+  let transaction;
+
   try {
-    console.log("Request dataaaaa body:", req.body);
-    console.log("Request dataaaaa body:", req.headers);
-    const { eventId, teacherId } = req.body;
-    if (eventId === null || teacherId === null) {
-      // Respond with a bad request error if validation fails.
-      return res.status(400).json({ message: "eventID or teacherID is null" });
+    transaction = await Schedule.sequelize.transaction();
+    // Assign all teachers within a transaction
+    for (const teacherId of teacherIds) {
+      await assignTeacherToSchedule(req, teacherId, transaction);
     }
+    
+    await deleteScheduleById(eventId, transaction);
 
-    const result = await assignTeacherToSchedule(req, teacherId);
-
-    if (!result.success) {
-      return res.status(400).json({ message: result.message });
-    }
-
-    const deletedSchedule = await deleteScheduleById(eventId);
-
-    if (!deletedSchedule) {
-      return res
-        .status(400)
-        .json({ message: "Failed to delete schedule after assigning teacher" });
-    }
+    await transaction.commit(); // Commit the transaction if all assignments succeed
 
     res.status(200).json({
-      message: "Teacher assigned and schedule deleted",
-      schedule: deletedSchedule,
+      message: "All teachers assigned and schedule deleted successfully"
     });
   } catch (error) {
+    if (transaction) await transaction.rollback();
+
     console.error(error);
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
-// Function to delete a schedule by its ID
-const deleteScheduleById = async (id) => {
-  const scheduleToDelete = await Schedule.findByPk(id);
-  if (scheduleToDelete) {
-    await scheduleToDelete.destroy();
-    return scheduleToDelete;
-  } else {
-    return null; // or throw an error indicating the schedule was not found
+const assignTeacherToSchedule = async (req, teacherId, transaction) => {
+  const io = getIO();
+  const { eventId } = req.body;
+  
+  const schedule = await Schedule.findByPk(eventId);
+  if (!schedule) {
+    throw new Error("Schedule not found");
   }
+
+  await Schedule.create({
+    start: schedule.start,
+    end: schedule.end,
+    title: schedule.title,
+    description: schedule.description,
+    course: schedule.course,
+    userId: teacherId,
+    status: "accepted",
+  }, { transaction });
+
+  // Emitting event should be outside of the transaction
+  const teacherSocketId = getTeacherSocketId(teacherId);
+  if (teacherSocketId) {
+    io.to(teacherSocketId).emit("eventAssigned", {
+      event: schedule,
+      sendUser: req.body.email,
+    });
+  }
+};
+
+const deleteScheduleById = async (id, transaction) => {
+  const scheduleToDelete = await Schedule.findByPk(id);
+  if (!scheduleToDelete) {
+    throw new Error("Schedule to delete not found");
+  }
+  await scheduleToDelete.destroy({ transaction });
 };
 
 module.exports = {

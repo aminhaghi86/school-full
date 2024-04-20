@@ -7,78 +7,84 @@ import "./deleteevent.css";
 const DeleteEventModal = ({ eventId, onClose }) => {
   // State variables
   const [availableTeachers, setAvailableTeachers] = useState([]);
-  const [selectedTeacherId, setSelectedTeacherId] = useState(null);
   const [loading, setLoading] = useState(false);
   const { user } = useAuthContext();
 
   // Effect hook to fetch available teachers
   useEffect(() => {
+    let timer;
+
     const fetchTeachers = async () => {
       setLoading(true);
       try {
-        // Simulating delay with setTimeout for spinner visibility
-        const timer = setTimeout(async () => {
+        timer = setTimeout(async () => {
           const teachers = await fetchAvailableTeachers(eventId, user.token);
-          setAvailableTeachers(teachers);
+          // Set the initial isSelected property for each teacher
+          const teachersWithSelection = teachers.map((teacher) => ({
+            ...teacher,
+            isSelected: false,
+          }));
+          setAvailableTeachers(teachersWithSelection);
           setLoading(false);
-        }, 2000);
-
-        return () => clearTimeout(timer);
+        }, 2000); // Delay of 2 seconds
       } catch (error) {
         console.error("Failed to fetch available teachers:", error);
         setLoading(false);
       }
     };
 
-    fetchTeachers();
-  }, [eventId, user]);
+    if (eventId) {
+      fetchTeachers();
+    }
 
-  // Handler for teacher selection change
-  const handleSelectionChange = (teacherId) => {
-    setSelectedTeacherId(teacherId);
-  };
+    return () => clearTimeout(timer); // Clear timeout when the component unmounts or dependencies change
+  }, [eventId, user.token]);
+
 
   // Handler for form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault(); // Prevent default form submission behavior
 
-    if (!selectedTeacherId) {
-      alert("Please select a teacher to assign before deleting");
-      return;
-    }
+    // Include IDs of all available teachers directly
+    const selectedTeacherIds = availableTeachers.map((teacher) => teacher.id);
+
+    setLoading(true); // Set loading state for UI indication
 
     try {
-      await assignTeacher(eventId, selectedTeacherId, user.email, user.token);
+      // Call "assignTeacher" with the array of teacher IDs
+      const responses = await assignTeacher(
+        eventId,
+        selectedTeacherIds,
+        user.email,
+        user.token
+      );
+
+      console.log("Teachers assigned successfully:", responses);
       onClose();
     } catch (error) {
-      console.error("Failed to assign teacher or delete schedule:", error);
+      console.error("Error during form submission:", error);
     }
+
+    setLoading(false); 
   };
 
-  // JSX rendering
   return (
     <div className="delete-event-modal">
       <h3>Select a Teacher:</h3>
-      {/* Display spinner while loading */}
       {loading && <Spinner />}
       <form onSubmit={handleSubmit}>
-        {/* Map through available teachers */}
         {availableTeachers.map((teacher) => (
           <div key={teacher.id} className="modal-inner">
             <label>
-              <input
-                type="radio"
-                value={teacher.id}
-                checked={selectedTeacherId === teacher.id}
-                onChange={() => handleSelectionChange(teacher.id)}
-              />
+              <input type="checkbox" checked={true} readOnly />
               {teacher.name}
             </label>
             <p>{teacher.email}</p>
           </div>
         ))}
-        {/* Display assign button if teacher is selected */}
-        {selectedTeacherId && <button type="submit">Assign Teacher</button>}
+        <button type="submit">
+          {availableTeachers.length < 2 ? "Assign Teacher" : "Assign Teachers"}
+        </button>
       </form>
       {/* Cancel button */}
       <button onClick={onClose}>Cancel</button>

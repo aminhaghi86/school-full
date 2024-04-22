@@ -82,7 +82,7 @@ const Calendar = () => {
 
     const handleMessageFromServer = (data) => {
       console.log("data server", data);
-      setEvents((prev) => [...prev, data]);
+      setEvents((prevEvents) => [...prevEvents, data]);
     };
     const handleMessageCreatedFromServer = (data) => {
       toast.success("server : New event created!");
@@ -99,24 +99,16 @@ const Calendar = () => {
     const handleAssignTask = (data) => {
       // Output data received from server to console
       console.log("data from server", data);
-
-      // Update the calendar with the new event data
-      // setEvents((prevEvents) => {
-      //   // Spread each event from the previous state to ensure immutability
-      //   calendarRef.current.getApi().refetchEvents();
-      //   const updatedEvents = [
-      //     ...prevEvents,
-      //     { ...data.event, className: `event-${data.event.status}` },
-      //   ];
-
-      //   return updatedEvents;
-      // });
-      fetchEvents();
-      // Refetch events to ensure the calendar is up-to-date
-      
-      // Show a toast notification indicating a new event has been assigned
+    
+      // Update the status of the event to "pending" before adding it to the events array
+      const updatedEvent = { ...data.event, status: "pending" };
+    
+      setEvents((prevEvents) => [...prevEvents, updatedEvent]);
+      // fetchEvents();
+    
       toast.info(`server: event comes from ${data.sendUser} to your calendar`);
     };
+    
 
     const scheduleNotFounded = (data) => {
       console.log("event deleted - not found available teacher", data);

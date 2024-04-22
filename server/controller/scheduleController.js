@@ -266,7 +266,10 @@ const assignTeacherToSchedule = async (req, teacherId, transaction) => {
   const teacherSocketId = getTeacherSocketId(teacherId);
   if (teacherSocketId) {
     io.to(teacherSocketId).emit("eventAssigned", {
-      event: schedule,
+      event: {
+        ...schedule.toJSON(),
+        status: "pending", // Set the status to "pending"
+      },
       sendUser: req.body.email,
     });
   }

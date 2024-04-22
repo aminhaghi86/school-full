@@ -38,11 +38,11 @@ const Calendar = () => {
     { value: "VUE", label: "Vue" },
     { value: "ANGULAR", label: "Angular" },
   ];
-  // useEffect(() => {
-  //   if (!user) return;
+  useEffect(() => {
+    if (!user) return;
 
-  //   return () => {};
-  // }, [user]);
+    return () => {};
+  }, [user]);
 
   useEffect(() => {
     const socketInstance = io("http://localhost:8000");
@@ -73,14 +73,18 @@ const Calendar = () => {
       console.log("server updated event", data);
     };
     const handleAssignTask = (data) => {
-      // Update the calendar with the new event data
+      // Output data received from server to console
       console.log("data from server", data);
-      toast.info(
-        `server : event comes  from ${data.sendUser}to your canlendar`
-      );
+    
+      // Update the calendar with the new event data
       setEvents((prevEvents) => [...prevEvents, data.event]);
-      calendarRef.current.getApi();
+    
+      // Refetch events to ensure the calendar is up-to-date
+      calendarRef.current.getApi().refetchEvents();
+      // Show a toast notification indicating a new event has been assigned
+      toast.info(`server: event comes from ${data.sendUser} to your calendar`);
     };
+    
     const scheduleNotFounded = (data) => {
       console.log("event deleted - not found available teacher", data);
       toast.info(`server : event ${data.course} deleted  from DB`);
@@ -244,6 +248,7 @@ const Calendar = () => {
         title: dropInfo.event.title,
         description: dropInfo.event.extendedProps.description,
         course: dropInfo.event.extendedProps.course || "HTML",
+        status: dropInfo.event.extendedProps.status,
       };
 
       try {
@@ -379,6 +384,7 @@ const Calendar = () => {
         setEvents((prevEvents) =>
           prevEvents.filter((event) => event.id !== selectedEvent.id)
         );
+        calendarRef.current.getApi().refetchEvents();
         // toast.success("Event successfully deleted.");
       } else {
         console.error("Error deleting event: Unexpected response", response);
@@ -527,6 +533,7 @@ const Calendar = () => {
         <button onClick={() => changeView("listMonth")}>List</button>
       </div>
       <FullCalendar
+      key={events.length}
         height="78vh"
         slotMinTime="08:00:00"
         slotMaxTime="17:00:00"

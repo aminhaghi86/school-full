@@ -44,7 +44,7 @@ const Calendar = () => {
     return () => {};
   }, [user]);
   useEffect(() => {
-    const socketInstance = io("http://localhost:8001");
+    const socketInstance = io("http://localhost:8000");
 
     socketInstance.on("connect", () => {
       console.log("Socket connected");

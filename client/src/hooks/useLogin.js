@@ -11,7 +11,7 @@ export const useLogin = () => {
     setError(null);
 
 
-    const response = await fetch("http://localhost:8001/login", {
+    const response = await fetch("http://localhost:8000/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: email, password: password }),

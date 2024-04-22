@@ -255,8 +255,9 @@ const assignTeacherToSchedule = async (req, teacherId, transaction) => {
       title: schedule.title,
       description: schedule.description,
       course: schedule.course,
-      userId: teacherId,
       status: "pending",
+      userId: teacherId,
+  
     },
     { transaction }
   );

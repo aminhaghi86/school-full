@@ -43,6 +43,30 @@ const Calendar = () => {
 
     return () => {};
   }, [user]);
+  const fetchEvents = useCallback(async () => {
+    try {
+      if (!user) return;
+
+      const response = await axios.get(`${process.env.REACT_APP_ENDPOINT}`, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          "Cache-Control": "no-cache",
+        },
+      });
+      let fetchedEvents = response.data.map((event) => ({
+        ...event,
+        className: `event-${event.status}`,
+      }));
+      if (filterCourse !== "ALL") {
+        fetchedEvents = fetchedEvents.filter(
+          (event) => event.course === filterCourse
+        );
+      }
+      setEvents(fetchedEvents);
+    } catch (error) {
+      console.log(error);
+    }
+  }, [user, filterCourse]);
 
   useEffect(() => {
     const socketInstance = io("http://localhost:8000");
@@ -75,16 +99,25 @@ const Calendar = () => {
     const handleAssignTask = (data) => {
       // Output data received from server to console
       console.log("data from server", data);
-    
+
       // Update the calendar with the new event data
-      setEvents((prevEvents) => [...prevEvents, data.event]);
-    
+      // setEvents((prevEvents) => {
+      //   // Spread each event from the previous state to ensure immutability
+      //   calendarRef.current.getApi().refetchEvents();
+      //   const updatedEvents = [
+      //     ...prevEvents,
+      //     { ...data.event, className: `event-${data.event.status}` },
+      //   ];
+
+      //   return updatedEvents;
+      // });
+      fetchEvents();
       // Refetch events to ensure the calendar is up-to-date
-      calendarRef.current.getApi().refetchEvents();
+      
       // Show a toast notification indicating a new event has been assigned
       toast.info(`server: event comes from ${data.sendUser} to your calendar`);
     };
-    
+
     const scheduleNotFounded = (data) => {
       console.log("event deleted - not found available teacher", data);
       toast.info(`server : event ${data.course} deleted  from DB`);
@@ -120,32 +153,9 @@ const Calendar = () => {
       socketInstance.off("eventAccepted");
       socketInstance.disconnect();
     };
-  }, [user]);
+  }, [user, fetchEvents]);
 
-  const fetchEvents = useCallback(async () => {
-    try {
-      if (!user) return;
 
-      const response = await axios.get(`${process.env.REACT_APP_ENDPOINT}`, {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-          "Cache-Control": "no-cache",
-        },
-      });
-      let fetchedEvents = response.data.map((event) => ({
-        ...event,
-        className: `event-${event.status}`,
-      }));
-      if (filterCourse !== "ALL") {
-        fetchedEvents = fetchedEvents.filter(
-          (event) => event.course === filterCourse
-        );
-      }
-      setEvents(fetchedEvents);
-    } catch (error) {
-      console.log(error);
-    }
-  }, [user, filterCourse]);
   useEffect(() => {
     if (user) {
       fetchEvents();
@@ -533,7 +543,6 @@ const Calendar = () => {
         <button onClick={() => changeView("listMonth")}>List</button>
       </div>
       <FullCalendar
-      key={events.length}
         height="78vh"
         slotMinTime="08:00:00"
         slotMaxTime="17:00:00"

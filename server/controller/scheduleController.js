@@ -1,4 +1,4 @@
-const { Schedule, User } = require("../model/task");
+const { Schedule, User,sequelize } = require("../model/task");
 const { getIO, getTeacherSocketId } = require("../socket");
 const { Op } = require("sequelize");
 const getAllSchedules = async (req, res) => {
@@ -59,6 +59,8 @@ const createSchedule = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
 
 const updateSchedule = async (req, res) => {
   try {
@@ -174,12 +176,10 @@ const deleteSchedule = async (req, res) => {
   }
 };
 
-
-
 const getAvailableTeachers = async (req, res) => {
   try {
-    console.log('reqreq',req);
-    console.log('resres',res);
+    console.log("reqreq", req);
+    console.log("resres", res);
     const { eventId } = req.query;
     console.log("eventId", eventId);
     // Check if eventId is not provided or null.
@@ -207,7 +207,7 @@ const getAvailableTeachers = async (req, res) => {
 
 const assignnewschedule = async (req, res) => {
   const { eventId, teacherIds } = req.body; // Modify to accept an array of teacherIds
-  
+
   if (!eventId || !teacherIds || !Array.isArray(teacherIds)) {
     return res.status(400).json({ message: "Invalid parameters" });
   }
@@ -220,40 +220,45 @@ const assignnewschedule = async (req, res) => {
     for (const teacherId of teacherIds) {
       await assignTeacherToSchedule(req, teacherId, transaction);
     }
-    
+
     await deleteScheduleById(eventId, transaction);
 
     await transaction.commit(); // Commit the transaction if all assignments succeed
 
     res.status(200).json({
-      message: "All teachers assigned and schedule deleted successfully"
+      message: "All teachers assigned and schedule deleted successfully",
     });
   } catch (error) {
     if (transaction) await transaction.rollback();
 
     console.error(error);
-    res.status(500).json({ message: "Internal server error", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
   }
 };
 
 const assignTeacherToSchedule = async (req, teacherId, transaction) => {
   const io = getIO();
   const { eventId } = req.body;
-  
+
   const schedule = await Schedule.findByPk(eventId);
   if (!schedule) {
     throw new Error("Schedule not found");
   }
 
-  await Schedule.create({
-    start: schedule.start,
-    end: schedule.end,
-    title: schedule.title,
-    description: schedule.description,
-    course: schedule.course,
-    userId: teacherId,
-    status: "accepted",
-  }, { transaction });
+  await Schedule.create(
+    {
+      start: schedule.start,
+      end: schedule.end,
+      title: schedule.title,
+      description: schedule.description,
+      course: schedule.course,
+      userId: teacherId,
+      status: "pending",
+    },
+    { transaction }
+  );
 
   // Emitting event should be outside of the transaction
   const teacherSocketId = getTeacherSocketId(teacherId);
@@ -265,6 +270,52 @@ const assignTeacherToSchedule = async (req, teacherId, transaction) => {
   }
 };
 
+//
+
+const acceptEvent = async (req, res) => {
+  const io = getIO();
+  const { eventId, userId } = req.body;
+
+  try {
+    // Set auto-commit to false to start a transaction
+    const result = await sequelize.transaction(async (transaction) => {
+      // Find the event and update its status to 'accepted'
+      const event = await Schedule.findByPk(eventId);
+      if (!event) {
+        throw new Error("Event not found");
+      }
+      if (event.userId !== userId || event.status !== 'pending') {
+        return res.status(400).json({ message: 'Event cannot be accepted' });
+      }
+      event.status = 'accepted';
+      await event.save({ transaction });
+
+      // Delete all other pending events in the same timeslot
+      await Schedule.destroy({
+        where: {
+          id: { [Op.ne]: eventId },
+          start: event.start,
+          end: event.end,
+          status: 'pending'
+        },
+        transaction: transaction
+      });
+
+      // Emit an event to all clients via Socket.io
+      io.emit('eventAccepted', { eventId, acceptedBy: userId });
+
+      return { message: 'Event accepted successfully' };
+    });
+
+    // If the transaction was committed successfully, send back a success response
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+//
 const deleteScheduleById = async (id, transaction) => {
   const scheduleToDelete = await Schedule.findByPk(id);
   if (!scheduleToDelete) {
@@ -281,4 +332,5 @@ module.exports = {
   deleteSchedule,
   getAvailableTeachers,
   assignnewschedule,
+  acceptEvent,
 };

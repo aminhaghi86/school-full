@@ -7,6 +7,7 @@ const {
   deleteSchedule,
   getAvailableTeachers,
   assignnewschedule,
+  acceptEvent
 } = require("../controller/scheduleController");
 
 const { requireAuth } = require("../middleware/requireAuth");
@@ -19,6 +20,7 @@ const setupRoutes = (app) => {
   router.get("/:id", getScheduleById);
   router.post("/", createSchedule);
   router.post("/assign-teacher", assignnewschedule);
+  router.post("/accept-event", acceptEvent);
   router.put("/:id", updateSchedule);
   router.delete("/:id", deleteSchedule);
 

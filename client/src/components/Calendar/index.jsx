@@ -38,11 +38,12 @@ const Calendar = () => {
     { value: "VUE", label: "Vue" },
     { value: "ANGULAR", label: "Angular" },
   ];
-  useEffect(() => {
-    if (!user) return;
+  // useEffect(() => {
+  //   if (!user) return;
 
-    return () => {};
-  }, [user]);
+  //   return () => {};
+  // }, [user]);
+
   useEffect(() => {
     const socketInstance = io("http://localhost:8000");
 
@@ -91,19 +92,29 @@ const Calendar = () => {
     socketInstance.on("scheduleUpdated", handleMessageUpdatedFromServer);
     socketInstance.on("eventAssigned", handleAssignTask);
     socketInstance.on("event-not-founded", scheduleNotFounded);
+    socketInstance.on("eventAccepted", ({ eventId, acceptedBy }) => {
+      if (user.userId !== acceptedBy) {
+        setEvents((prevEvents) =>
+          prevEvents.filter(
+            (event) => event.id !== eventId && event.status !== "pending"
+          )
+        );
+      }
+    });
+
     socketInstance.on("disconnect", () => {
       console.log("Socket disconnected");
     });
 
     return () => {
+      socketInstance.off("message-from-server");
+      socketInstance.off("scheduleCreated");
+      socketInstance.off("scheduleUpdated");
+      socketInstance.off("scheduleDeleted");
+      socketInstance.off("eventAssigned");
+      socketInstance.off("event-not-founded");
+      socketInstance.off("eventAccepted");
       socketInstance.disconnect();
-
-      socketInstance.off("message-from-server", handleMessageFromServer);
-      socketInstance.off("scheduleCreated", handleMessageCreatedFromServer);
-      socketInstance.off("scheduleUpdated", handleMessageUpdatedFromServer);
-      socketInstance.off("scheduleDeleted", handleMessageDeletedFromServer);
-      socketInstance.off("eventAssigned", handleAssignTask);
-      socketInstance.off("event-not-founded", scheduleNotFounded);
     };
   }, [user]);
 
@@ -131,7 +142,15 @@ const Calendar = () => {
       console.log(error);
     }
   }, [user, filterCourse]);
-
+  useEffect(() => {
+    if (user) {
+      fetchEvents();
+    }
+    // The dependency array was missing; added `[user, fetchEvents]`
+    return () => {
+      setEvents([]);
+    };
+  }, [user, fetchEvents]);
   const handleSelect = (selectInfo) => {
     const start = selectInfo.start;
     const end = selectInfo.end;
@@ -165,6 +184,7 @@ const Calendar = () => {
         title: clickedEvent.title || "Untitled Event",
         description: clickedEvent.extendedProps.description || "",
         course: clickedEvent.extendedProps.course || "",
+        status: clickedEvent.extendedProps.status, // Ensure status is included here
       });
       setShowModal(true);
     } else {
@@ -324,17 +344,18 @@ const Calendar = () => {
     }
   };
   const handleDeleteClick = async () => {
-    const confirmDelete = window.confirm('Are you sure you want to delete this event?');
-    
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this event?"
+    );
+
     if (confirmDelete) {
       // User confirmed; proceed with deletion
       await handleDeleteEvent();
     } else {
       // User canceled; no further action needed
-      console.log('Deletion cancelled by user.');
+      console.log("Deletion cancelled by user.");
     }
   };
-  
 
   const handleDeleteEvent = async () => {
     try {
@@ -343,6 +364,7 @@ const Calendar = () => {
       }
       setDeleteMode(true);
       // Send a request to delete the event
+
       const response = await axios.delete(
         `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`,
         {
@@ -353,8 +375,10 @@ const Calendar = () => {
       );
 
       if (response.status >= 200 && response.status < 300) {
-        // Update events after successful deletion
-        setEvents(events.filter((event) => event.id !== selectedEvent.id));
+        // Update events directly using the state setter
+        setEvents((prevEvents) =>
+          prevEvents.filter((event) => event.id !== selectedEvent.id)
+        );
         // toast.success("Event successfully deleted.");
       } else {
         console.error("Error deleting event: Unexpected response", response);
@@ -440,6 +464,42 @@ const Calendar = () => {
     const selectedCourse = e.target.value;
     setFilterCourse(selectedCourse);
   };
+
+  const handleAcceptEvent = async () => {
+    if (!user || !selectedEvent) return; // Check if user and event are available.
+
+    try {
+      const response = await axios.post(
+        `${process.env.REACT_APP_ENDPOINT}/accept-event`, // Use the correct endpoint for accepting an event.
+        {
+          eventId: selectedEvent.id,
+          userId: user.userId,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+      if (response.status === 200) {
+        toast.success("You have accepted the event.");
+        setEvents((prevEvents) =>
+          prevEvents.map((event) =>
+            event.id === selectedEvent.id
+              ? { ...event, status: "accepted" }
+              : event
+          )
+        );
+        setShowModal(false);
+      } else {
+        toast.error("Failed to accept the event.");
+      }
+    } catch (error) {
+      console.error("Error while accepting event:", error);
+      toast.error("An error occurred while accepting the event.");
+    }
+  };
+
   return (
     <div style={{ margin: "5rem 0" }}>
       <ToastContainer position="bottom-left" autoClose={1500} />
@@ -507,14 +567,22 @@ const Calendar = () => {
         onViewChange={handleViewChange}
         selectable={true}
         select={handleSelect}
-        events={events}
+        events={events.map((event) => ({
+          ...event,
+          className: `event-${event.status}`, // Apply the class based on status
+        }))}
         eventClick={handleEditEvent}
         editable={true}
         eventDrop={handleEventDrop}
         eventResize={handleEventResize}
       />
       {showModal && (
-        <Modal onClose={() => setShowModal(false)} onDelete={handleDeleteClick}>
+        <Modal
+          selectedEvent={selectedEvent}
+          onClose={() => setShowModal(false)}
+          onAccept={handleAcceptEvent}
+          onDelete={handleDeleteClick}
+        >
           <div className="modal-container">
             {/* Date and time */}
             <div className="date-time">

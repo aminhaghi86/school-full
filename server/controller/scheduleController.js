@@ -4,10 +4,20 @@ const { Op } = require("sequelize");
 const getAllSchedules = async (req, res) => {
   try {
     const io = getIO();
-    const userId = req.user.id;
+    const userId = req.user.id; // Extracting the user ID from request object
+
+    // Retrieve the specific user's schedules from the database
     const schedules = await Schedule.findAll({ where: { UserId: userId } });
+
+    // Send a success response with the schedules to the HTTP client
     res.status(200).json(schedules);
-    io.emit("message-from-server", schedules);
+    const teacherSocketId = getTeacherSocketId(userId);
+
+    if (teacherSocketId) {
+      io.to(teacherSocketId).emit("message-from-server", schedules);
+    } else {
+      console.log(`Socket ID for user ${userId} not found.`);
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });

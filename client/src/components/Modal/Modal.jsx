@@ -4,7 +4,7 @@ import "./modal.css";
 // ... rest of the Modal component ...
 
 const Modal = ({ onClose, onDelete, children, onAccept, onDeny,selectedEvent }) => {
-  console.log('modal selecenen',selectedEvent);
+  // console.log('modal selecenen',selectedEvent);
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -17,11 +17,11 @@ const Modal = ({ onClose, onDelete, children, onAccept, onDeny,selectedEvent }) 
               Accept Event
             </button>
           )}
-          {onDeny && (
+          {/* {onDeny && (
             <button className="deny-button" onClick={onDeny}>
               Deny
             </button>
-          )}
+          )} */}
           <button className="delete-button" onClick={onDelete}>
             Delete Event
           </button>

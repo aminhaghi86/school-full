@@ -13,7 +13,18 @@
   .accept-button {
     background-color: #188cb9; /* Green */
     color: white;
+    padding: .5rem 1rem;
+    border: none;
+    border-radius: .25rem;
     /* Add other styling as needed */
+  }
+  .close-button{
+    background-color: #e0a81a; /* Green */
+    color: white;
+    padding: .5rem 1rem;
+    border: none;
+    border-radius: .25rem;
+    margin-left: .25rem;
   }
   
   .deny-button {

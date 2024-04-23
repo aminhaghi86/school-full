@@ -1,4 +1,4 @@
-const { Schedule, User,sequelize } = require("../model/task");
+const { Schedule, User, sequelize } = require("../model/task");
 const { getIO, getTeacherSocketId } = require("../socket");
 const { Op } = require("sequelize");
 const getAllSchedules = async (req, res) => {
@@ -35,7 +35,7 @@ const createSchedule = async (req, res) => {
     const io = getIO();
     const userId = req.user.id;
     console.log(userId);
-    const { start, end, title, description, course,status } = req.body;
+    const { start, end, title, description, course, status } = req.body;
     console.log("Received user ID:", userId);
     const schedule = await Schedule.create({
       start,
@@ -44,7 +44,7 @@ const createSchedule = async (req, res) => {
       description,
       course,
       userId,
-      status
+      status,
     });
     res.status(201).json(schedule);
 
@@ -60,8 +60,6 @@ const createSchedule = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
-
 
 const updateSchedule = async (req, res) => {
   try {
@@ -207,7 +205,7 @@ const getAvailableTeachers = async (req, res) => {
 };
 
 const assignnewschedule = async (req, res) => {
-  const { eventId, teacherIds } = req.body; // Modify to accept an array of teacherIds
+  const { eventId, teacherIds } = req.body;
 
   if (!eventId || !teacherIds || !Array.isArray(teacherIds)) {
     return res.status(400).json({ message: "Invalid parameters" });
@@ -217,7 +215,7 @@ const assignnewschedule = async (req, res) => {
 
   try {
     transaction = await Schedule.sequelize.transaction();
-    // Assign all teachers within a transaction
+
     for (const teacherId of teacherIds) {
       await assignTeacherToSchedule(req, teacherId, transaction);
     }
@@ -266,57 +264,12 @@ const assignTeacherToSchedule = async (req, teacherId, transaction) => {
   if (teacherSocketId) {
     // Emit event to the teacher's socket
     io.to(teacherSocketId).emit("eventAssigned", {
-      event: newSchedule.toJSON(), // Send the newly created schedule
-      sendUser: req.body.email, // Include any additional data if needed
+      event: newSchedule.toJSON(),
+      sendUser: req.body.email,
     });
   }
 };
 
-
-//
-
-// const acceptEvent = async (req, res) => {
-//   const io = getIO();
-//   const { eventId, userId } = req.body;
-
-//   try {
-//     // Set auto-commit to false to start a transaction
-//     const result = await sequelize.transaction(async (transaction) => {
-//       // Find the event and update its status to 'accepted'
-//       const event = await Schedule.findByPk(eventId);
-//       if (!event) {
-//         return res.status(404).json({ message: 'Event not found' });
-//       }
-//       if (event.userId !== userId || event.status !== 'pending') {
-//         return res.status(400).json({ message: 'Event cannot be accepted' });
-//       }
-//       event.status = 'accepted';
-//       await event.save({ transaction });
-
-//       // Delete all other pending events in the same timeslot
-//       await Schedule.destroy({
-//         where: {
-//           id: { [Op.ne]: eventId },
-//           start: event.start,
-//           end: event.end,
-//           status: 'pending'
-//         },
-//         transaction: transaction
-//       });
-
-//       // Emit an event to all clients via Socket.io
-//       io.emit('eventAccepted', { eventId, acceptedBy: userId });
-
-//       return { message: 'Event accepted successfully' };
-//     });
-
-//     // If the transaction was committed successfully, send back a success response
-//     res.json(result);
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({ message: 'Internal server error' });
-//   }
-// };
 const acceptEvent = async (req, res) => {
   const io = getIO();
   const { eventId, userId } = req.body;
@@ -324,42 +277,51 @@ const acceptEvent = async (req, res) => {
   try {
     const event = await Schedule.findByPk(eventId);
     if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
+      return res.status(404).json({ message: "Event not found." });
     }
-    if (event.userId !== userId || event.status !== 'pending') {
-      return res.status(400).json({ message: 'Event cannot be accepted' });
+    if (event.userId !== userId || event.status !== "pending") {
+      return res.status(400).json({ message: "Event cannot be accepted." });
     }
 
     // Start the transaction
     const result = await sequelize.transaction(async (transaction) => {
       // Update the event status to 'accepted'
-      event.status = 'accepted';
+      event.status = "accepted";
       await event.save({ transaction });
 
-      // Delete other pending events in the same timeslot
-      await Schedule.destroy({
+      // Find other pending events in the same timeslot across all users
+      const conflictingEvents = await Schedule.findAll({
         where: {
           id: { [Op.ne]: eventId },
           start: event.start,
           end: event.end,
-          status: 'pending'
+          status: "pending",
         },
-        transaction: transaction
       });
 
-      // No need to emit event here
+      // Collect IDs of the conflicting events
+      const eventIdsToRemove = conflictingEvents.map((e) => e.id);
 
-      return { message: 'Event accepted successfully' };
+      // Remove those events from the database
+      await Schedule.destroy({
+        where: { id: { [Op.in]: eventIdsToRemove } },
+        transaction: transaction,
+      });
+
+      // Emit event for each removed pending event so clients can update accordingly
+      eventIdsToRemove.forEach((removedEventId) => {
+        io.emit("eventRemoved", { removedEventId });
+      });
+
+      return { message: "Event accepted successfully." };
     });
 
-    // If the transaction was committed successfully, send back a success response
     res.json(result);
 
-    // Emit event outside of the transaction
-    io.emit('eventAccepted', { eventId, acceptedBy: userId });
+    io.emit("eventAccepted", { eventId, acceptedBy: userId });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Internal server error' });
+    return res.status(500).json({ message: "Internal server error." });
   }
 };
 

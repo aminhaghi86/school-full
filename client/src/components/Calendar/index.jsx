@@ -137,13 +137,20 @@ const Calendar = () => {
     socketInstance.on("eventAssigned", handleAssignTask);
     socketInstance.on("event-not-founded", scheduleNotFounded);
     socketInstance.on("eventAccepted", ({ eventId, acceptedBy }) => {
-      if (user.userId !== acceptedBy) {
-        setEvents((prevEvents) =>
-          prevEvents.filter(
-            (event) => event.id !== eventId && event.status !== "pending"
-          )
-        );
-      }
+      setEvents((prevEvents) => prevEvents.map((event) => {
+        if (event.id === eventId) {
+          return { ...event, status: acceptedBy === user.userId ? "accepted" : "removed" };
+        }
+        return event;
+      }).filter(event => event.status !== "removed"));
+    });
+  
+    // Add a listener for the 'eventRemoved' event from the server
+    socketInstance.on("eventRemoved", (data) => {
+      const { removedEventId } = data;
+      setEvents((prevEvents) =>
+        prevEvents.filter((event) => event.id !== removedEventId)
+      );
     });
 
     socketInstance.on("disconnect", () => {
@@ -158,6 +165,7 @@ const Calendar = () => {
       socketInstance.off("eventAssigned");
       socketInstance.off("event-not-founded");
       socketInstance.off("eventAccepted");
+      socketInstance.off("eventRemoved");
       socketInstance.disconnect();
     };
   }, [user, fetchEvents]);
@@ -243,11 +251,11 @@ const Calendar = () => {
     });
   };
 
-  const handleViewChange = (view, currentView) => {
-    console.log("view", view);
-    console.log("currentvire", currentView);
-    setCalendarView(currentView.title);
-  };
+  // const handleViewChange = (view, currentView) => {
+  //   console.log("view", view);
+  //   console.log("currentvire", currentView);
+  //   setCalendarView(currentView.title);
+  // };
 
   const handleEventDrop = async (dropInfo) => {
     const startDate = dropInfo.event.start;
@@ -586,7 +594,7 @@ const Calendar = () => {
           center: "title",
           end: "",
         }}
-        onViewChange={handleViewChange}
+        // onViewChange={handleViewChange}
         selectable={true}
         select={handleSelect}
         events={events.map((event) => ({

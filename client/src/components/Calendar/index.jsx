@@ -119,7 +119,9 @@ const Calendar = () => {
           return updatedEvents;
         });
 
-        toast.info(`Server: Event added to your calendar from ${data.sendUser}`);
+        toast.info(
+          `Server: Event added to your calendar from ${data.sendUser}`
+        );
       } else {
         console.error("Event is undefined:", data);
       }
@@ -137,14 +139,21 @@ const Calendar = () => {
     socketInstance.on("eventAssigned", handleAssignTask);
     socketInstance.on("event-not-founded", scheduleNotFounded);
     socketInstance.on("eventAccepted", ({ eventId, acceptedBy }) => {
-      setEvents((prevEvents) => prevEvents.map((event) => {
-        if (event.id === eventId) {
-          return { ...event, status: acceptedBy === user.userId ? "accepted" : "removed" };
-        }
-        return event;
-      }).filter(event => event.status !== "removed"));
+      setEvents((prevEvents) =>
+        prevEvents
+          .map((event) => {
+            if (event.id === eventId) {
+              return {
+                ...event,
+                status: acceptedBy === user.userId ? "accepted" : "removed",
+              };
+            }
+            return event;
+          })
+          .filter((event) => event.status !== "removed")
+      );
     });
-  
+
     // Add a listener for the 'eventRemoved' event from the server
     socketInstance.on("eventRemoved", (data) => {
       const { removedEventId } = data;
@@ -212,7 +221,7 @@ const Calendar = () => {
         title: clickedEvent.title || "Untitled Event",
         description: clickedEvent.extendedProps.description || "",
         course: clickedEvent.extendedProps.course || "",
-        status: clickedEvent.extendedProps.status, 
+        status: clickedEvent.extendedProps.status,
       });
       setShowModal(true);
     } else {
@@ -251,17 +260,15 @@ const Calendar = () => {
     });
   };
 
-  // const handleViewChange = (view, currentView) => {
-  //   console.log("view", view);
-  //   console.log("currentvire", currentView);
-  //   setCalendarView(currentView.title);
-  // };
-
   const handleEventDrop = async (dropInfo) => {
     const startDate = dropInfo.event.start;
     const endDate = dropInfo.event.end;
     const movedEventId = dropInfo.event.id;
-
+    if (dropInfo.event.extendedProps.status === "pending") {
+      toast.error("Pending events cannot be moved.");
+      dropInfo.revert();
+      return;
+    }
     const isOverlap = isEventOverlap(startDate, endDate, movedEventId);
     if (!isOverlap) {
       // No overlap found, continue with updating the event
@@ -321,7 +328,11 @@ const Calendar = () => {
       description: resizeInfo.event.extendedProps.description,
       course: resizeInfo.event.extendedProps.course,
     };
-
+    if (resizeInfo.event.extendedProps.status === "pending") {
+      toast.error("Pending events cannot be resized.");
+      resizeInfo.revert();
+      return;
+    }
     // Check if the event overlaps with any existing (excluding itself)
     const isOverlap = isEventOverlap(
       new Date(updatedEvent.start),
@@ -422,6 +433,10 @@ const Calendar = () => {
   };
 
   const handleSaveEvent = async () => {
+    if (selectedEvent.status === "pending") {
+      toast.error("Cannot save a pending event.");
+      return;
+    }
     // Prevent saving if mandatory fields are not filled or if no user is logged in
     if (
       !user ||
@@ -432,7 +447,6 @@ const Calendar = () => {
       toast.error("Please fill out all required fields.");
       return;
     }
-
     const start = new Date(selectedEvent.start);
     const end = new Date(selectedEvent.end);
     const isOverlap = isEventOverlap(start, end, selectedEvent.id);
@@ -627,6 +641,7 @@ const Calendar = () => {
               placeholder="Event Name"
               value={selectedEvent.title}
               onChange={(e) => handleInputChange(e, "title")}
+              readOnly={selectedEvent.status === "pending"}
             />
 
             {/* Event description textarea */}
@@ -635,6 +650,7 @@ const Calendar = () => {
               placeholder="Event Description"
               value={selectedEvent.description}
               onChange={(e) => handleInputChange(e, "description")}
+              readOnly={selectedEvent.status === "pending"}
               maxLength={100}
               minLength={1}
             ></textarea>
@@ -644,6 +660,7 @@ const Calendar = () => {
               className="course-select"
               value={selectedEvent.course}
               required
+              disabled={selectedEvent.status === "pending"}
               onChange={(e) => handleInputChange(e, "course")}
             >
               <option value="">Choose a course</option>
@@ -655,14 +672,10 @@ const Calendar = () => {
               <option value="ANGULAR">Angular</option>
             </select>
 
-            {/* Save button */}
-            <button className="save-button" onClick={handleSaveEvent}>
-              Save Event
-            </button>
-
-            {/* Status */}
-            {selectedEvent.status === "active" && (
-              <div className="status">Active</div>
+            {(selectedEvent.status === "accepted" || !selectedEvent.status) && (
+              <button className="save-button" onClick={handleSaveEvent}>
+                Save Event
+              </button>
             )}
           </div>
         </Modal>

@@ -1,13 +1,13 @@
-/* .event-accepted {
+.event-accepted {
     background-color: #0443ef; /* Green for accepted events */
-  /* } */
+  /* }
    
   .event-denied {
     background-color: #ffcdd2; /* Red for denied events */
   }
   
   .event-pending {
-    background-color: #9ccb36; /* Yellow for pending events */
+    background-color: #f45804; /* Yellow for pending events */
   }
 
   .accept-button {
@@ -21,7 +21,6 @@
     color: white;
     /* Add other styling as needed */
   }
-
   /*  */
   /* Modal container */
 .modal-container {

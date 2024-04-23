@@ -248,7 +248,7 @@ const assignTeacherToSchedule = async (req, teacherId, transaction) => {
     throw new Error("Schedule not found");
   }
 
-  await Schedule.create(
+  const newSchedule = await Schedule.create(
     {
       start: schedule.start,
       end: schedule.end,
@@ -257,7 +257,6 @@ const assignTeacherToSchedule = async (req, teacherId, transaction) => {
       course: schedule.course,
       status: "pending",
       userId: teacherId,
-  
     },
     { transaction }
   );
@@ -265,37 +264,79 @@ const assignTeacherToSchedule = async (req, teacherId, transaction) => {
   // Emitting event should be outside of the transaction
   const teacherSocketId = getTeacherSocketId(teacherId);
   if (teacherSocketId) {
+    // Emit event to the teacher's socket
     io.to(teacherSocketId).emit("eventAssigned", {
-      event: {
-        ...schedule.toJSON(),
-        status: "pending", // Set the status to "pending"
-      },
-      sendUser: req.body.email,
+      event: newSchedule.toJSON(), // Send the newly created schedule
+      sendUser: req.body.email, // Include any additional data if needed
     });
   }
 };
 
+
 //
 
+// const acceptEvent = async (req, res) => {
+//   const io = getIO();
+//   const { eventId, userId } = req.body;
+
+//   try {
+//     // Set auto-commit to false to start a transaction
+//     const result = await sequelize.transaction(async (transaction) => {
+//       // Find the event and update its status to 'accepted'
+//       const event = await Schedule.findByPk(eventId);
+//       if (!event) {
+//         return res.status(404).json({ message: 'Event not found' });
+//       }
+//       if (event.userId !== userId || event.status !== 'pending') {
+//         return res.status(400).json({ message: 'Event cannot be accepted' });
+//       }
+//       event.status = 'accepted';
+//       await event.save({ transaction });
+
+//       // Delete all other pending events in the same timeslot
+//       await Schedule.destroy({
+//         where: {
+//           id: { [Op.ne]: eventId },
+//           start: event.start,
+//           end: event.end,
+//           status: 'pending'
+//         },
+//         transaction: transaction
+//       });
+
+//       // Emit an event to all clients via Socket.io
+//       io.emit('eventAccepted', { eventId, acceptedBy: userId });
+
+//       return { message: 'Event accepted successfully' };
+//     });
+
+//     // If the transaction was committed successfully, send back a success response
+//     res.json(result);
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ message: 'Internal server error' });
+//   }
+// };
 const acceptEvent = async (req, res) => {
   const io = getIO();
   const { eventId, userId } = req.body;
 
   try {
-    // Set auto-commit to false to start a transaction
+    const event = await Schedule.findByPk(eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    if (event.userId !== userId || event.status !== 'pending') {
+      return res.status(400).json({ message: 'Event cannot be accepted' });
+    }
+
+    // Start the transaction
     const result = await sequelize.transaction(async (transaction) => {
-      // Find the event and update its status to 'accepted'
-      const event = await Schedule.findByPk(eventId);
-      if (!event) {
-        throw new Error("Event not found");
-      }
-      if (event.userId !== userId || event.status !== 'pending') {
-        return res.status(400).json({ message: 'Event cannot be accepted' });
-      }
+      // Update the event status to 'accepted'
       event.status = 'accepted';
       await event.save({ transaction });
 
-      // Delete all other pending events in the same timeslot
+      // Delete other pending events in the same timeslot
       await Schedule.destroy({
         where: {
           id: { [Op.ne]: eventId },
@@ -306,14 +347,16 @@ const acceptEvent = async (req, res) => {
         transaction: transaction
       });
 
-      // Emit an event to all clients via Socket.io
-      io.emit('eventAccepted', { eventId, acceptedBy: userId });
+      // No need to emit event here
 
       return { message: 'Event accepted successfully' };
     });
 
     // If the transaction was committed successfully, send back a success response
     res.json(result);
+
+    // Emit event outside of the transaction
+    io.emit('eventAccepted', { eventId, acceptedBy: userId });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Internal server error' });

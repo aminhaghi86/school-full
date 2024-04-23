@@ -96,19 +96,34 @@ const Calendar = () => {
       toast.info("server : event Updated!");
       console.log("server updated event", data);
     };
+
     const handleAssignTask = (data) => {
-      // Output data received from server to console
       console.log("data from server", data);
-    
-      // Update the status of the event to "pending" before adding it to the events array
-      const updatedEvent = { ...data.event, status: "pending" };
-    
-      setEvents((prevEvents) => [...prevEvents, updatedEvent]);
-      // fetchEvents();
-    
-      toast.info(`server: event comes from ${data.sendUser} to your calendar`);
+      // Access event and status from data
+      const { event } = data;
+
+      // Ensure event is defined
+      if (event) {
+        setEvents((prevEvents) => {
+          // Check if the event already exists in the state
+          const updatedEvents = prevEvents.map((e) => {
+            if (e.id === event.id) {
+              // If the event exists, update its status
+              return { ...e, status: event.status };
+            }
+            return e;
+          });
+          if (!prevEvents.some((e) => e.id === event.id)) {
+            updatedEvents.push(event);
+          }
+          return updatedEvents;
+        });
+
+        toast.info(`Server: Event added to your calendar`);
+      } else {
+        console.error("Event is undefined:", data);
+      }
     };
-    
 
     const scheduleNotFounded = (data) => {
       console.log("event deleted - not found available teacher", data);
@@ -146,7 +161,6 @@ const Calendar = () => {
       socketInstance.disconnect();
     };
   }, [user, fetchEvents]);
-
 
   useEffect(() => {
     if (user) {
@@ -190,7 +204,7 @@ const Calendar = () => {
         title: clickedEvent.title || "Untitled Event",
         description: clickedEvent.extendedProps.description || "",
         course: clickedEvent.extendedProps.course || "",
-        status: clickedEvent.extendedProps.status, // Ensure status is included here
+        status: clickedEvent.extendedProps.status, 
       });
       setShowModal(true);
     } else {

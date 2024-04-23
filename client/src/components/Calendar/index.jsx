@@ -23,6 +23,8 @@ const Calendar = () => {
     description: "",
     course: "",
   });
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
   const [events, setEvents] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [deleteMode, setDeleteMode] = useState(false);
@@ -236,6 +238,7 @@ const Calendar = () => {
         [field]: e.target.value,
       };
       setSelectedEvent(updatedEvent);
+      setHasUnsavedChanges(true);
     }
   };
 
@@ -490,6 +493,7 @@ const Calendar = () => {
       );
       setSelectedEvent(null);
       setShowModal(false);
+      setHasUnsavedChanges(false);
     } catch (error) {
       console.error("Error saving event:", error);
       toast.error("Failed to save the event.");
@@ -672,7 +676,12 @@ const Calendar = () => {
               <option value="ANGULAR">Angular</option>
             </select>
 
-            {(selectedEvent.status === "accepted" || !selectedEvent.status) && (
+            {/* {(selectedEvent.status === "accepted" || !selectedEvent.status) && (
+              <button className="save-button" onClick={handleSaveEvent}  disabled={!hasUnsavedChanges}>
+                Save Event
+              </button>
+            )} */}
+            {(!selectedEvent.id || hasUnsavedChanges) && (
               <button className="save-button" onClick={handleSaveEvent}>
                 Save Event
               </button>

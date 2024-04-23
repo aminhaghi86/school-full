@@ -119,7 +119,7 @@ const Calendar = () => {
           return updatedEvents;
         });
 
-        toast.info(`Server: Event added to your calendar`);
+        toast.info(`Server: Event added to your calendar from ${data.sendUser}`);
       } else {
         console.error("Event is undefined:", data);
       }

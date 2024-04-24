@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -11,6 +11,12 @@ import { useAuthContext } from "../../hooks/useAuthContext";
 import { ToastContainer, toast } from "react-toastify";
 import Modal from "../Modal/Modal";
 import DeleteEventModal from "../DeleteEventModal";
+import {
+  fetchEvents,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+} from "../../utils/eventServices";
 import "react-toastify/dist/ReactToastify.css";
 import "./index.css";
 const Calendar = () => {
@@ -45,28 +51,18 @@ const Calendar = () => {
 
     return () => {};
   }, [user]);
-  const fetchEvents = useCallback(async () => {
-    try {
-      if (!user) return;
-
-      const response = await axios.get(`${process.env.REACT_APP_ENDPOINT}`, {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-          "Cache-Control": "no-cache",
-        },
-      });
-      let fetchedEvents = response.data.map((event) => ({
-        ...event,
-        className: `event-${event.status}`,
-      }));
-      if (filterCourse !== "ALL") {
-        fetchedEvents = fetchedEvents.filter(
-          (event) => event.course === filterCourse
-        );
-      }
-      setEvents(fetchedEvents);
-    } catch (error) {
-      console.log(error);
+  useEffect(() => {
+    if (user) {
+      const getEvents = async () => {
+        try {
+          const fetchedEvents = await fetchEvents(user, filterCourse);
+          setEvents(fetchedEvents);
+        } catch (error) {
+          toast.error("Error fetching events.");
+          console.error(error);
+        }
+      };
+      getEvents();
     }
   }, [user, filterCourse]);
 
@@ -179,17 +175,16 @@ const Calendar = () => {
       socketInstance.off("eventRemoved");
       socketInstance.disconnect();
     };
-  }, [user, fetchEvents]);
+  }, [user]);
 
   useEffect(() => {
     if (user) {
-      fetchEvents();
     }
     // The dependency array was missing; added `[user, fetchEvents]`
     return () => {
       setEvents([]);
     };
-  }, [user, fetchEvents]);
+  }, [user]);
   const handleSelect = (selectInfo) => {
     const start = selectInfo.start;
     const end = selectInfo.end;
@@ -275,39 +270,26 @@ const Calendar = () => {
     const isOverlap = isEventOverlap(startDate, endDate, movedEventId);
     if (!isOverlap) {
       // No overlap found, continue with updating the event
-      const updatedEvent = {
-        id: movedEventId,
-        start: startDate.toISOString(),
-        end: endDate.toISOString(),
-        title: dropInfo.event.title,
-        description: dropInfo.event.extendedProps.description,
-        course: dropInfo.event.extendedProps.course || "HTML",
-        status: dropInfo.event.extendedProps.status,
-      };
 
       try {
-        const response = await axios.put(
-          `${process.env.REACT_APP_ENDPOINT}/${movedEventId}`,
-          updatedEvent,
+        const updatedEventData = await updateEvent(
+          movedEventId,
           {
-            headers: {
-              Authorization: `Bearer ${user.token}`,
-            },
-          }
+            start: dropInfo.event.startStr,
+            end: dropInfo.event.endStr,
+            title: dropInfo.event.title,
+            description: dropInfo.event.extendedProps.description,
+            course: dropInfo.event.extendedProps.course,
+            status: dropInfo.event.extendedProps.status,
+          },
+          user
         );
-
-        if (response.status >= 200 && response.status < 300) {
-          const updatedEventData = response.data;
-          setEvents(
-            events.map((event) =>
-              event.id === updatedEventData.id ? updatedEventData : event
-            )
-          );
-          toast.success("Event successfully updated.");
-        } else {
-          console.error("Error updating event: Unexpected response", response);
-          dropInfo.revert(); // Revert the event back to its original position
-        }
+        setEvents((prevEvents) =>
+          prevEvents.map((event) =>
+            event.id === updatedEventData.id ? updatedEventData : event
+          )
+        );
+        toast.success("Event successfully updated.");
       } catch (error) {
         console.error("Error updating event:", error);
         toast.error("Failed to update the event.");
@@ -402,34 +384,21 @@ const Calendar = () => {
 
   const handleDeleteEvent = async () => {
     try {
-      if (!user || !selectedEvent) {
-        return;
-      }
+      if (!user || !selectedEvent) return;
+
       setDeleteMode(true);
-      // Send a request to delete the event
 
-      const response = await axios.delete(
-        `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        }
+      await deleteEvent(selectedEvent.id, user);
+
+      setEvents((prevEvents) =>
+        prevEvents.filter((event) => event.id !== selectedEvent.id)
       );
+      calendarRef.current.getApi().refetchEvents();
 
-      if (response.status >= 200 && response.status < 300) {
-        // Update events directly using the state setter
-        setEvents((prevEvents) =>
-          prevEvents.filter((event) => event.id !== selectedEvent.id)
-        );
-        calendarRef.current.getApi().refetchEvents();
-        // toast.success("Event successfully deleted.");
-      } else {
-        console.error("Error deleting event: Unexpected response", response);
-      }
+      toast.success("Event deleted successfully.");
     } catch (error) {
-      console.error("Error deleting event:", error);
       toast.error("Failed to delete the event.");
+      console.error(error);
     } finally {
       setShowModal(false);
     }
@@ -459,55 +428,46 @@ const Calendar = () => {
       return;
     }
 
-    const url = selectedEvent.id
-      ? `${process.env.REACT_APP_ENDPOINT}/${selectedEvent.id}`
-      : process.env.REACT_APP_ENDPOINT;
-    const method = selectedEvent.id ? "PUT" : "POST";
-
     try {
-      const response = await axios({
-        method,
-        url,
-        data: selectedEvent,
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      });
-
-      const updatedEventData = response.data;
-
+      let updatedEventData;
       if (selectedEvent.id) {
-        // Update existing event
-        setEvents(
-          events.map((event) =>
-            event.id === updatedEventData.id ? updatedEventData : event
-          )
+        updatedEventData = await updateEvent(
+          selectedEvent.id,
+          selectedEvent,
+          user
         );
       } else {
-        // Add new event
-        setEvents([...events, updatedEventData]);
+        updatedEventData = await createEvent(selectedEvent, user);
       }
 
+      setEvents((prevEvents) =>
+        selectedEvent.id
+          ? prevEvents.map((event) =>
+              event.id === updatedEventData.id ? updatedEventData : event
+            )
+          : [...prevEvents, updatedEventData]
+      );
+
       toast.success(
-        `client : Event ${selectedEvent.id ? "updated" : "added"} successfully.`
+        `Event ${selectedEvent.id ? "updated" : "created"} successfully.`
       );
       setSelectedEvent(null);
       setShowModal(false);
       setHasUnsavedChanges(false);
     } catch (error) {
-      console.error("Error saving event:", error);
       toast.error("Failed to save the event.");
+      console.error(error);
     }
   };
 
   useEffect(() => {
     if (user) {
-      fetchEvents();
+      
     }
     return () => {
       setEvents([]);
     };
-  }, [user, fetchEvents]);
+  }, [user]);
   const handleCourseChange = (e) => {
     const selectedCourse = e.target.value;
     setFilterCourse(selectedCourse);

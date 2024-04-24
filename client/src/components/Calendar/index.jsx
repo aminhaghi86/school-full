@@ -1,15 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import listPlugin from "@fullcalendar/list";
-import multiMonthPlugin from "@fullcalendar/multimonth";
-import interactionPlugin from "@fullcalendar/interaction";
+import useSocket from "../../hooks/useSocket";
 import axios from "axios";
-import { io } from "socket.io-client";
 import { useAuthContext } from "../../hooks/useAuthContext";
 import { ToastContainer, toast } from "react-toastify";
-import Modal from "../Modal/Modal";
 import DeleteEventModal from "../DeleteEventModal";
 import {
   fetchEvents,
@@ -19,8 +12,13 @@ import {
 } from "../../utils/eventServices";
 import "react-toastify/dist/ReactToastify.css";
 import "./index.css";
+import { Course } from "../Course";
+import TimeViewButtons from "../TimeViewButton";
+import EventDetailsModal from "../EventDetailsModal";
+import CalendarComponent from "../CalendarComponent";
+import { isEventOverlap } from "../../utils/overlapEvent";
 const Calendar = () => {
-  const { user } = useAuthContext();
+
   const [selectedEvent, setSelectedEvent] = useState({
     id: null,
     start: null,
@@ -29,23 +27,15 @@ const Calendar = () => {
     description: "",
     course: "",
   });
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
   const [events, setEvents] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [deleteMode, setDeleteMode] = useState(false);
   const [calendarView, setCalendarView] = useState("timeGridWeek");
-  const calendarRef = useRef(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [filterCourse, setFilterCourse] = useState("ALL");
-  const courses = [
-    { value: "ALL", label: "All" },
-    { value: "HTML", label: "HTML" },
-    { value: "CSS", label: "CSS" },
-    { value: "JAVASCRIPT", label: "JavaScript" },
-    { value: "REACT", label: "React" },
-    { value: "VUE", label: "Vue" },
-    { value: "ANGULAR", label: "Angular" },
-  ];
+  const calendarRef = useRef(null);
+  const { user } = useAuthContext();
+  useSocket(user, setEvents);
   useEffect(() => {
     if (!user) return;
 
@@ -66,116 +56,7 @@ const Calendar = () => {
     }
   }, [user, filterCourse]);
 
-  useEffect(() => {
-    const socketInstance = io("http://localhost:8000");
 
-    socketInstance.on("connect", () => {
-      console.log("Socket connected");
-      socketInstance.emit("teacherConnected", user.userId);
-    });
-
-    socketInstance.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-    });
-
-    const handleMessageFromServer = (data) => {
-      console.log("data server", data);
-      setEvents((prevEvents) => [...prevEvents, data]);
-    };
-    const handleMessageCreatedFromServer = (data) => {
-      toast.success("server : New event created!");
-      console.log("server created event", data);
-    };
-    const handleMessageDeletedFromServer = (data) => {
-      toast.warn("server : event Deleted!");
-      console.log("server deleted event", data);
-    };
-    const handleMessageUpdatedFromServer = (data) => {
-      toast.info("server : event Updated!");
-      console.log("server updated event", data);
-    };
-
-    const handleAssignTask = (data) => {
-      console.log("data from server", data);
-      // Access event and status from data
-      const { event } = data;
-
-      // Ensure event is defined
-      if (event) {
-        setEvents((prevEvents) => {
-          // Check if the event already exists in the state
-          const updatedEvents = prevEvents.map((e) => {
-            if (e.id === event.id) {
-              // If the event exists, update its status
-              return { ...e, status: event.status };
-            }
-            return e;
-          });
-          if (!prevEvents.some((e) => e.id === event.id)) {
-            updatedEvents.push(event);
-          }
-          return updatedEvents;
-        });
-
-        toast.info(
-          `Server: Event added to your calendar from ${data.sendUser}`
-        );
-      } else {
-        console.error("Event is undefined:", data);
-      }
-    };
-
-    const scheduleNotFounded = (data) => {
-      console.log("event deleted - not found available teacher", data);
-      toast.info(`server : event ${data.course} deleted  from DB`);
-      setDeleteMode(false);
-    };
-    socketInstance.on("message-from-server", handleMessageFromServer);
-    socketInstance.on("scheduleCreated", handleMessageCreatedFromServer);
-    socketInstance.on("scheduleDeleted", handleMessageDeletedFromServer);
-    socketInstance.on("scheduleUpdated", handleMessageUpdatedFromServer);
-    socketInstance.on("eventAssigned", handleAssignTask);
-    socketInstance.on("event-not-founded", scheduleNotFounded);
-    socketInstance.on("eventAccepted", ({ eventId, acceptedBy }) => {
-      setEvents((prevEvents) =>
-        prevEvents
-          .map((event) => {
-            if (event.id === eventId) {
-              return {
-                ...event,
-                status: acceptedBy === user.userId ? "accepted" : "removed",
-              };
-            }
-            return event;
-          })
-          .filter((event) => event.status !== "removed")
-      );
-    });
-
-    // Add a listener for the 'eventRemoved' event from the server
-    socketInstance.on("eventRemoved", (data) => {
-      const { removedEventId } = data;
-      setEvents((prevEvents) =>
-        prevEvents.filter((event) => event.id !== removedEventId)
-      );
-    });
-
-    socketInstance.on("disconnect", () => {
-      console.log("Socket disconnected");
-    });
-
-    return () => {
-      socketInstance.off("message-from-server");
-      socketInstance.off("scheduleCreated");
-      socketInstance.off("scheduleUpdated");
-      socketInstance.off("scheduleDeleted");
-      socketInstance.off("eventAssigned");
-      socketInstance.off("event-not-founded");
-      socketInstance.off("eventAccepted");
-      socketInstance.off("eventRemoved");
-      socketInstance.disconnect();
-    };
-  }, [user]);
 
   useEffect(() => {
     if (user) {
@@ -189,7 +70,7 @@ const Calendar = () => {
     const start = selectInfo.start;
     const end = selectInfo.end;
 
-    const isOverlap = isEventOverlap(start, end);
+    const isOverlap = isEventOverlap(events, start, end);
 
     if (!isOverlap) {
       setSelectedEvent({
@@ -249,15 +130,6 @@ const Calendar = () => {
     }
   };
 
-  const isEventOverlap = (startDate, endDate, ignoreEventId = null) => {
-    return events.some((event) => {
-      if (ignoreEventId === event.id) {
-        return false;
-      }
-      return startDate < new Date(event.end) && new Date(event.start) < endDate;
-    });
-  };
-
   const handleEventDrop = async (dropInfo) => {
     const startDate = dropInfo.event.start;
     const endDate = dropInfo.event.end;
@@ -267,7 +139,7 @@ const Calendar = () => {
       dropInfo.revert();
       return;
     }
-    const isOverlap = isEventOverlap(startDate, endDate, movedEventId);
+    const isOverlap = isEventOverlap(events, startDate, endDate, movedEventId);
     if (!isOverlap) {
       // No overlap found, continue with updating the event
 
@@ -318,8 +190,8 @@ const Calendar = () => {
       resizeInfo.revert();
       return;
     }
-    // Check if the event overlaps with any existing (excluding itself)
     const isOverlap = isEventOverlap(
+      events,
       new Date(updatedEvent.start),
       new Date(updatedEvent.end),
       updatedEvent.id
@@ -327,7 +199,7 @@ const Calendar = () => {
 
     if (isOverlap) {
       toast.error("Event times conflict with an existing event.");
-      resizeInfo.revert(); // Revert the event back to its original duration
+      resizeInfo.revert();
       return;
     }
 
@@ -374,10 +246,8 @@ const Calendar = () => {
     );
 
     if (confirmDelete) {
-      // User confirmed; proceed with deletion
       await handleDeleteEvent();
     } else {
-      // User canceled; no further action needed
       console.log("Deletion cancelled by user.");
     }
   };
@@ -409,7 +279,6 @@ const Calendar = () => {
       toast.error("Cannot save a pending event.");
       return;
     }
-    // Prevent saving if mandatory fields are not filled or if no user is logged in
     if (
       !user ||
       !selectedEvent ||
@@ -421,7 +290,7 @@ const Calendar = () => {
     }
     const start = new Date(selectedEvent.start);
     const end = new Date(selectedEvent.end);
-    const isOverlap = isEventOverlap(start, end, selectedEvent.id);
+    const isOverlap = isEventOverlap(events, start, end, selectedEvent.id);
 
     if (isOverlap) {
       toast.error("Event times conflict with an existing event.");
@@ -462,7 +331,6 @@ const Calendar = () => {
 
   useEffect(() => {
     if (user) {
-      
     }
     return () => {
       setEvents([]);
@@ -474,11 +342,11 @@ const Calendar = () => {
   };
 
   const handleAcceptEvent = async () => {
-    if (!user || !selectedEvent) return; // Check if user and event are available.
+    if (!user || !selectedEvent) return;
 
     try {
       const response = await axios.post(
-        `${process.env.REACT_APP_ENDPOINT}/accept-event`, // Use the correct endpoint for accepting an event.
+        `${process.env.REACT_APP_ENDPOINT}/accept-event`,
         {
           eventId: selectedEvent.id,
           userId: user.userId,
@@ -507,164 +375,51 @@ const Calendar = () => {
       toast.error("An error occurred while accepting the event.");
     }
   };
+  const onClose = () => {
+    setDeleteMode(false);
+    setSelectedEvent({
+      id: null,
+      start: null,
+      end: null,
+      title: "",
+      description: "",
+      course: "",
+    });
+  };
 
   return (
     <div style={{ margin: "5rem 0" }}>
-      <ToastContainer position="bottom-left" autoClose={1500} />
-      <div>
-        {courses.map((course) => (
-          <label key={course.value}>
-            <input
-              type="radio"
-              value={course.value}
-              name="course"
-              checked={filterCourse === course.value}
-              onChange={handleCourseChange}
-            />
-            {course.label}
-          </label>
-        ))}
-      </div>
-      <div>
-        <button onClick={() => changeView("today")}>Today</button>
-        <button onClick={() => changeView("timeGridWeek")}>Week</button>
-        <button onClick={() => changeView("dayGridMonth")}>Month</button>
-        <button onClick={() => changeView("multiMonthYear")}>
-          Multi-Month
-        </button>
-        <button onClick={() => changeView("listMonth")}>List</button>
-      </div>
-      <FullCalendar
-        height="78vh"
-        slotMinTime="08:00:00"
-        slotMaxTime="17:00:00"
-        nowIndicator={true}
-        now={new Date()}
-        navLinks={true}
-        multiMonthMaxColumns={1}
-        dayMaxEvents={true}
-        ref={calendarRef}
-        plugins={[
-          dayGridPlugin,
-          timeGridPlugin,
-          interactionPlugin,
-          listPlugin,
-          multiMonthPlugin,
-        ]}
-        initialView={"timeGridWeek"}
-        headerToolbar={{
-          start: (() => {
-            switch (calendarView) {
-              case "timeGridDay":
-                return "prev,next";
-              case "timeGridWeek":
-                return "prev,next";
-              case "dayGridMonth":
-                return "prev,next";
-              case "listMonth":
-                return "prev,next";
-              case "multiMonthYear":
-                return "prev,next";
-              default:
-                return "";
-            }
-          })(),
-          center: "title",
-          end: "",
-        }}
-        // onViewChange={handleViewChange}
-        selectable={true}
-        select={handleSelect}
-        events={events.map((event) => ({
-          ...event,
-          className: `event-${event.status}`, // Apply the class based on status
-        }))}
-        eventClick={handleEditEvent}
-        editable={true}
-        eventDrop={handleEventDrop}
-        eventResize={handleEventResize}
+      <ToastContainer position="bottom-left" autoClose={500} />
+
+      <Course
+        filterCourse={filterCourse}
+        handleCourseChange={handleCourseChange}
+      />
+
+      <TimeViewButtons changeView={changeView} />
+      <CalendarComponent
+        calendarRef={calendarRef}
+        handleSelect={handleSelect}
+        handleEditEvent={handleEditEvent}
+        handleEventDrop={handleEventDrop}
+        handleEventResize={handleEventResize}
+        events={events}
+        calendarView={calendarView}
       />
       {showModal && (
-        <Modal
+        <EventDetailsModal
           selectedEvent={selectedEvent}
+          handleInputChange={handleInputChange}
+          handleSaveEvent={handleSaveEvent}
           onClose={() => setShowModal(false)}
           onAccept={handleAcceptEvent}
           onDelete={handleDeleteClick}
-        >
-          <div className="modal-container">
-            {/* Date and time */}
-            <div className="date-time">
-              <span>From:{new Date(selectedEvent.start).toLocaleString()}</span>
-              <span>to: {new Date(selectedEvent.end).toLocaleString()}</span>
-            </div>
-
-            {/* Event name input */}
-            <input
-              className="event-name"
-              type="text"
-              placeholder="Event Name"
-              value={selectedEvent.title}
-              onChange={(e) => handleInputChange(e, "title")}
-              readOnly={selectedEvent.status === "pending"}
-            />
-
-            {/* Event description textarea */}
-            <textarea
-              className="event-description"
-              placeholder="Event Description"
-              value={selectedEvent.description}
-              onChange={(e) => handleInputChange(e, "description")}
-              readOnly={selectedEvent.status === "pending"}
-              maxLength={100}
-              minLength={1}
-            ></textarea>
-
-            {/* Course select */}
-            <select
-              className="course-select"
-              value={selectedEvent.course}
-              required
-              disabled={selectedEvent.status === "pending"}
-              onChange={(e) => handleInputChange(e, "course")}
-            >
-              <option value="">Choose a course</option>
-              <option value="HTML">HTML</option>
-              <option value="CSS">CSS</option>
-              <option value="JAVASCRIPT">JavaScript</option>
-              <option value="REACT">React</option>
-              <option value="VUE">Vue</option>
-              <option value="ANGULAR">Angular</option>
-            </select>
-
-            {/* {(selectedEvent.status === "accepted" || !selectedEvent.status) && (
-              <button className="save-button" onClick={handleSaveEvent}  disabled={!hasUnsavedChanges}>
-                Save Event
-              </button>
-            )} */}
-            {(!selectedEvent.id || hasUnsavedChanges) && (
-              <button className="save-button" onClick={handleSaveEvent}>
-                Save Event
-              </button>
-            )}
-          </div>
-        </Modal>
+          hasUnsavedChanges={hasUnsavedChanges}
+        />
       )}
 
       {deleteMode && (
-        <DeleteEventModal
-          eventId={selectedEvent.id}
-          onClose={() => {
-            setDeleteMode(false);
-            setSelectedEvent({
-              id: null,
-              start: null,
-              end: null,
-              title: "",
-              description: "",
-              course: "",
-            });
-          }}
-        />
+        <DeleteEventModal eventId={selectedEvent.id} onClose={onClose} />
       )}
     </div>
   );

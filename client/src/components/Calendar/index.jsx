@@ -9,7 +9,6 @@ import axios from "axios";
 import { io } from "socket.io-client";
 import { useAuthContext } from "../../hooks/useAuthContext";
 import { ToastContainer, toast } from "react-toastify";
-import Modal from "../Modal/Modal";
 import DeleteEventModal from "../DeleteEventModal";
 import {
   fetchEvents,
@@ -19,6 +18,9 @@ import {
 } from "../../utils/eventServices";
 import "react-toastify/dist/ReactToastify.css";
 import "./index.css";
+import { Course } from "../Course";
+import TimeViewButtons from "../TimeViewButton";
+import EventDetailsModal from "../EventDetailsModal";
 const Calendar = () => {
   const { user } = useAuthContext();
   const [selectedEvent, setSelectedEvent] = useState({
@@ -37,15 +39,7 @@ const Calendar = () => {
   const [calendarView, setCalendarView] = useState("timeGridWeek");
   const calendarRef = useRef(null);
   const [filterCourse, setFilterCourse] = useState("ALL");
-  const courses = [
-    { value: "ALL", label: "All" },
-    { value: "HTML", label: "HTML" },
-    { value: "CSS", label: "CSS" },
-    { value: "JAVASCRIPT", label: "JavaScript" },
-    { value: "REACT", label: "React" },
-    { value: "VUE", label: "Vue" },
-    { value: "ANGULAR", label: "Angular" },
-  ];
+
   useEffect(() => {
     if (!user) return;
 
@@ -462,7 +456,6 @@ const Calendar = () => {
 
   useEffect(() => {
     if (user) {
-      
     }
     return () => {
       setEvents([]);
@@ -507,33 +500,28 @@ const Calendar = () => {
       toast.error("An error occurred while accepting the event.");
     }
   };
+  const onClose = () => {
+    setDeleteMode(false);
+    setSelectedEvent({
+      id: null,
+      start: null,
+      end: null,
+      title: "",
+      description: "",
+      course: "",
+    });
+  };
 
   return (
     <div style={{ margin: "5rem 0" }}>
       <ToastContainer position="bottom-left" autoClose={1500} />
-      <div>
-        {courses.map((course) => (
-          <label key={course.value}>
-            <input
-              type="radio"
-              value={course.value}
-              name="course"
-              checked={filterCourse === course.value}
-              onChange={handleCourseChange}
-            />
-            {course.label}
-          </label>
-        ))}
-      </div>
-      <div>
-        <button onClick={() => changeView("today")}>Today</button>
-        <button onClick={() => changeView("timeGridWeek")}>Week</button>
-        <button onClick={() => changeView("dayGridMonth")}>Month</button>
-        <button onClick={() => changeView("multiMonthYear")}>
-          Multi-Month
-        </button>
-        <button onClick={() => changeView("listMonth")}>List</button>
-      </div>
+
+      <Course
+        filterCourse={filterCourse}
+        handleCourseChange={handleCourseChange}
+      />
+
+      <TimeViewButtons changeView={changeView} />
       <FullCalendar
         height="78vh"
         slotMinTime="08:00:00"
@@ -577,7 +565,7 @@ const Calendar = () => {
         select={handleSelect}
         events={events.map((event) => ({
           ...event,
-          className: `event-${event.status}`, // Apply the class based on status
+          className: `event-${event.status}`,
         }))}
         eventClick={handleEditEvent}
         editable={true}
@@ -585,86 +573,19 @@ const Calendar = () => {
         eventResize={handleEventResize}
       />
       {showModal && (
-        <Modal
+        <EventDetailsModal
           selectedEvent={selectedEvent}
+          handleInputChange={handleInputChange}
+          handleSaveEvent={handleSaveEvent}
           onClose={() => setShowModal(false)}
           onAccept={handleAcceptEvent}
           onDelete={handleDeleteClick}
-        >
-          <div className="modal-container">
-            {/* Date and time */}
-            <div className="date-time">
-              <span>From:{new Date(selectedEvent.start).toLocaleString()}</span>
-              <span>to: {new Date(selectedEvent.end).toLocaleString()}</span>
-            </div>
-
-            {/* Event name input */}
-            <input
-              className="event-name"
-              type="text"
-              placeholder="Event Name"
-              value={selectedEvent.title}
-              onChange={(e) => handleInputChange(e, "title")}
-              readOnly={selectedEvent.status === "pending"}
-            />
-
-            {/* Event description textarea */}
-            <textarea
-              className="event-description"
-              placeholder="Event Description"
-              value={selectedEvent.description}
-              onChange={(e) => handleInputChange(e, "description")}
-              readOnly={selectedEvent.status === "pending"}
-              maxLength={100}
-              minLength={1}
-            ></textarea>
-
-            {/* Course select */}
-            <select
-              className="course-select"
-              value={selectedEvent.course}
-              required
-              disabled={selectedEvent.status === "pending"}
-              onChange={(e) => handleInputChange(e, "course")}
-            >
-              <option value="">Choose a course</option>
-              <option value="HTML">HTML</option>
-              <option value="CSS">CSS</option>
-              <option value="JAVASCRIPT">JavaScript</option>
-              <option value="REACT">React</option>
-              <option value="VUE">Vue</option>
-              <option value="ANGULAR">Angular</option>
-            </select>
-
-            {/* {(selectedEvent.status === "accepted" || !selectedEvent.status) && (
-              <button className="save-button" onClick={handleSaveEvent}  disabled={!hasUnsavedChanges}>
-                Save Event
-              </button>
-            )} */}
-            {(!selectedEvent.id || hasUnsavedChanges) && (
-              <button className="save-button" onClick={handleSaveEvent}>
-                Save Event
-              </button>
-            )}
-          </div>
-        </Modal>
+          hasUnsavedChanges={hasUnsavedChanges}
+        />
       )}
 
       {deleteMode && (
-        <DeleteEventModal
-          eventId={selectedEvent.id}
-          onClose={() => {
-            setDeleteMode(false);
-            setSelectedEvent({
-              id: null,
-              start: null,
-              end: null,
-              title: "",
-              description: "",
-              course: "",
-            });
-          }}
-        />
+        <DeleteEventModal eventId={selectedEvent.id} onClose={onClose} />
       )}
     </div>
   );

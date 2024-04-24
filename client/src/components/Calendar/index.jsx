@@ -1,10 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import listPlugin from "@fullcalendar/list";
-import multiMonthPlugin from "@fullcalendar/multimonth";
-import interactionPlugin from "@fullcalendar/interaction";
+
 import axios from "axios";
 import { io } from "socket.io-client";
 import { useAuthContext } from "../../hooks/useAuthContext";
@@ -21,6 +16,8 @@ import "./index.css";
 import { Course } from "../Course";
 import TimeViewButtons from "../TimeViewButton";
 import EventDetailsModal from "../EventDetailsModal";
+import CalendarComponent from "../CalendarComponent";
+import { isEventOverlap } from "../../utils/overlapEvent";
 const Calendar = () => {
   const { user } = useAuthContext();
   const [selectedEvent, setSelectedEvent] = useState({
@@ -183,7 +180,7 @@ const Calendar = () => {
     const start = selectInfo.start;
     const end = selectInfo.end;
 
-    const isOverlap = isEventOverlap(start, end);
+    const isOverlap = isEventOverlap(events, start, end);
 
     if (!isOverlap) {
       setSelectedEvent({
@@ -243,15 +240,6 @@ const Calendar = () => {
     }
   };
 
-  const isEventOverlap = (startDate, endDate, ignoreEventId = null) => {
-    return events.some((event) => {
-      if (ignoreEventId === event.id) {
-        return false;
-      }
-      return startDate < new Date(event.end) && new Date(event.start) < endDate;
-    });
-  };
-
   const handleEventDrop = async (dropInfo) => {
     const startDate = dropInfo.event.start;
     const endDate = dropInfo.event.end;
@@ -261,7 +249,7 @@ const Calendar = () => {
       dropInfo.revert();
       return;
     }
-    const isOverlap = isEventOverlap(startDate, endDate, movedEventId);
+    const isOverlap = isEventOverlap(events, startDate, endDate, movedEventId);
     if (!isOverlap) {
       // No overlap found, continue with updating the event
 
@@ -312,8 +300,8 @@ const Calendar = () => {
       resizeInfo.revert();
       return;
     }
-    // Check if the event overlaps with any existing (excluding itself)
     const isOverlap = isEventOverlap(
+      events,
       new Date(updatedEvent.start),
       new Date(updatedEvent.end),
       updatedEvent.id
@@ -321,7 +309,7 @@ const Calendar = () => {
 
     if (isOverlap) {
       toast.error("Event times conflict with an existing event.");
-      resizeInfo.revert(); // Revert the event back to its original duration
+      resizeInfo.revert();
       return;
     }
 
@@ -368,10 +356,8 @@ const Calendar = () => {
     );
 
     if (confirmDelete) {
-      // User confirmed; proceed with deletion
       await handleDeleteEvent();
     } else {
-      // User canceled; no further action needed
       console.log("Deletion cancelled by user.");
     }
   };
@@ -403,7 +389,6 @@ const Calendar = () => {
       toast.error("Cannot save a pending event.");
       return;
     }
-    // Prevent saving if mandatory fields are not filled or if no user is logged in
     if (
       !user ||
       !selectedEvent ||
@@ -415,7 +400,7 @@ const Calendar = () => {
     }
     const start = new Date(selectedEvent.start);
     const end = new Date(selectedEvent.end);
-    const isOverlap = isEventOverlap(start, end, selectedEvent.id);
+    const isOverlap = isEventOverlap(events, start, end, selectedEvent.id);
 
     if (isOverlap) {
       toast.error("Event times conflict with an existing event.");
@@ -467,11 +452,11 @@ const Calendar = () => {
   };
 
   const handleAcceptEvent = async () => {
-    if (!user || !selectedEvent) return; // Check if user and event are available.
+    if (!user || !selectedEvent) return;
 
     try {
       const response = await axios.post(
-        `${process.env.REACT_APP_ENDPOINT}/accept-event`, // Use the correct endpoint for accepting an event.
+        `${process.env.REACT_APP_ENDPOINT}/accept-event`,
         {
           eventId: selectedEvent.id,
           userId: user.userId,
@@ -514,7 +499,7 @@ const Calendar = () => {
 
   return (
     <div style={{ margin: "5rem 0" }}>
-      <ToastContainer position="bottom-left" autoClose={1500} />
+      <ToastContainer position="bottom-left" autoClose={500} />
 
       <Course
         filterCourse={filterCourse}
@@ -522,55 +507,14 @@ const Calendar = () => {
       />
 
       <TimeViewButtons changeView={changeView} />
-      <FullCalendar
-        height="78vh"
-        slotMinTime="08:00:00"
-        slotMaxTime="17:00:00"
-        nowIndicator={true}
-        now={new Date()}
-        navLinks={true}
-        multiMonthMaxColumns={1}
-        dayMaxEvents={true}
-        ref={calendarRef}
-        plugins={[
-          dayGridPlugin,
-          timeGridPlugin,
-          interactionPlugin,
-          listPlugin,
-          multiMonthPlugin,
-        ]}
-        initialView={"timeGridWeek"}
-        headerToolbar={{
-          start: (() => {
-            switch (calendarView) {
-              case "timeGridDay":
-                return "prev,next";
-              case "timeGridWeek":
-                return "prev,next";
-              case "dayGridMonth":
-                return "prev,next";
-              case "listMonth":
-                return "prev,next";
-              case "multiMonthYear":
-                return "prev,next";
-              default:
-                return "";
-            }
-          })(),
-          center: "title",
-          end: "",
-        }}
-        // onViewChange={handleViewChange}
-        selectable={true}
-        select={handleSelect}
-        events={events.map((event) => ({
-          ...event,
-          className: `event-${event.status}`,
-        }))}
-        eventClick={handleEditEvent}
-        editable={true}
-        eventDrop={handleEventDrop}
-        eventResize={handleEventResize}
+      <CalendarComponent
+        calendarRef={calendarRef}
+        handleSelect={handleSelect}
+        handleEditEvent={handleEditEvent}
+        handleEventDrop={handleEventDrop}
+        handleEventResize={handleEventResize}
+        events={events}
+        calendarView={calendarView}
       />
       {showModal && (
         <EventDetailsModal

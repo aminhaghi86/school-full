@@ -18,7 +18,7 @@ import EventDetailsModal from "../EventDetailsModal";
 import CalendarComponent from "../CalendarComponent";
 import { isEventOverlap } from "../../utils/overlapEvent";
 const Calendar = () => {
-  const { user } = useAuthContext();
+
   const [selectedEvent, setSelectedEvent] = useState({
     id: null,
     start: null,
@@ -27,14 +27,14 @@ const Calendar = () => {
     description: "",
     course: "",
   });
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
- 
   const [events, setEvents] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [deleteMode, setDeleteMode] = useState(false);
   const [calendarView, setCalendarView] = useState("timeGridWeek");
-  const calendarRef = useRef(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [filterCourse, setFilterCourse] = useState("ALL");
+  const calendarRef = useRef(null);
+  const { user } = useAuthContext();
   useSocket(user, setEvents);
   useEffect(() => {
     if (!user) return;

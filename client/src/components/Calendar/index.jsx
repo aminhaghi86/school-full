@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-
+import useSocket from "../../hooks/useSocket";
 import axios from "axios";
-import { io } from "socket.io-client";
 import { useAuthContext } from "../../hooks/useAuthContext";
 import { ToastContainer, toast } from "react-toastify";
 import DeleteEventModal from "../DeleteEventModal";
@@ -29,14 +28,14 @@ const Calendar = () => {
     course: "",
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
+ 
   const [events, setEvents] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [deleteMode, setDeleteMode] = useState(false);
   const [calendarView, setCalendarView] = useState("timeGridWeek");
   const calendarRef = useRef(null);
   const [filterCourse, setFilterCourse] = useState("ALL");
-
+  useSocket(user, setEvents);
   useEffect(() => {
     if (!user) return;
 
@@ -57,116 +56,7 @@ const Calendar = () => {
     }
   }, [user, filterCourse]);
 
-  useEffect(() => {
-    const socketInstance = io("http://localhost:8000");
 
-    socketInstance.on("connect", () => {
-      console.log("Socket connected");
-      socketInstance.emit("teacherConnected", user.userId);
-    });
-
-    socketInstance.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-    });
-
-    const handleMessageFromServer = (data) => {
-      console.log("data server", data);
-      setEvents((prevEvents) => [...prevEvents, data]);
-    };
-    const handleMessageCreatedFromServer = (data) => {
-      toast.success("server : New event created!");
-      console.log("server created event", data);
-    };
-    const handleMessageDeletedFromServer = (data) => {
-      toast.warn("server : event Deleted!");
-      console.log("server deleted event", data);
-    };
-    const handleMessageUpdatedFromServer = (data) => {
-      toast.info("server : event Updated!");
-      console.log("server updated event", data);
-    };
-
-    const handleAssignTask = (data) => {
-      console.log("data from server", data);
-      // Access event and status from data
-      const { event } = data;
-
-      // Ensure event is defined
-      if (event) {
-        setEvents((prevEvents) => {
-          // Check if the event already exists in the state
-          const updatedEvents = prevEvents.map((e) => {
-            if (e.id === event.id) {
-              // If the event exists, update its status
-              return { ...e, status: event.status };
-            }
-            return e;
-          });
-          if (!prevEvents.some((e) => e.id === event.id)) {
-            updatedEvents.push(event);
-          }
-          return updatedEvents;
-        });
-
-        toast.info(
-          `Server: Event added to your calendar from ${data.sendUser}`
-        );
-      } else {
-        console.error("Event is undefined:", data);
-      }
-    };
-
-    const scheduleNotFounded = (data) => {
-      console.log("event deleted - not found available teacher", data);
-      toast.info(`server : event ${data.course} deleted  from DB`);
-      setDeleteMode(false);
-    };
-    socketInstance.on("message-from-server", handleMessageFromServer);
-    socketInstance.on("scheduleCreated", handleMessageCreatedFromServer);
-    socketInstance.on("scheduleDeleted", handleMessageDeletedFromServer);
-    socketInstance.on("scheduleUpdated", handleMessageUpdatedFromServer);
-    socketInstance.on("eventAssigned", handleAssignTask);
-    socketInstance.on("event-not-founded", scheduleNotFounded);
-    socketInstance.on("eventAccepted", ({ eventId, acceptedBy }) => {
-      setEvents((prevEvents) =>
-        prevEvents
-          .map((event) => {
-            if (event.id === eventId) {
-              return {
-                ...event,
-                status: acceptedBy === user.userId ? "accepted" : "removed",
-              };
-            }
-            return event;
-          })
-          .filter((event) => event.status !== "removed")
-      );
-    });
-
-    // Add a listener for the 'eventRemoved' event from the server
-    socketInstance.on("eventRemoved", (data) => {
-      const { removedEventId } = data;
-      setEvents((prevEvents) =>
-        prevEvents.filter((event) => event.id !== removedEventId)
-      );
-    });
-
-    socketInstance.on("disconnect", () => {
-      console.log("Socket disconnected");
-    });
-
-    return () => {
-      socketInstance.off("message-from-server");
-      socketInstance.off("scheduleCreated");
-      socketInstance.off("scheduleUpdated");
-      socketInstance.off("scheduleDeleted");
-      socketInstance.off("eventAssigned");
-      socketInstance.off("event-not-founded");
-      socketInstance.off("eventAccepted");
-      socketInstance.off("eventRemoved");
-      socketInstance.disconnect();
-    };
-  }, [user]);
 
   useEffect(() => {
     if (user) {

@@ -1,4 +1,5 @@
 import React from "react";
+import "./course.css";
 const courses = [
   { value: "ALL", label: "All" },
   { value: "HTML", label: "HTML" },
@@ -8,9 +9,10 @@ const courses = [
   { value: "VUE", label: "Vue" },
   { value: "ANGULAR", label: "Angular" },
 ];
-export const Course = ({filterCourse, handleCourseChange}) => {
+export const Course = ({ filterCourse, handleCourseChange }) => {
   return (
-    <div>
+    <div className="course-container">
+      <label>Filter by Course:</label>
       {courses.map((course) => (
         <label key={course.value}>
           <input

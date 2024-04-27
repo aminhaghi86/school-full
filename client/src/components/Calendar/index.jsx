@@ -388,12 +388,13 @@ const Calendar = () => {
     <div className="calendar-page">
       
       <div className="control-container">
+      <TimeViewButtons changeView={changeView} />
         <Course
           filterCourse={filterCourse}
           handleCourseChange={handleCourseChange}
         />
 
-        <TimeViewButtons changeView={changeView} />
+       
       </div>
       <div className="calendar-container">
       <ToastContainer position="bottom-left" autoClose={500} />

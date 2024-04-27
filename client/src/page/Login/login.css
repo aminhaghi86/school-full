@@ -1,9 +1,26 @@
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 90vh;
+}
+
+.image-container {
+  width: 50%;
+  height: 90vh;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .login-container {
+  height: 100%;
+  width: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  background-color: #f0f0f0;
+  border-right: 1px solid #cccccc;
 }
 
 .login-form {
@@ -46,4 +63,15 @@
   color: red;
   font-weight: bold;
   margin-top: 10px;
+}
+
+@media screen and (max-width: 768px) {
+  .login-page {
+    flex-direction: column;
+  }
+  .login-container {
+    border-right: none;
+    border-bottom: 1px solid #cccccc;
+    width: 100%;
+  }
 }

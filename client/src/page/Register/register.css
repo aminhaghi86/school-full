@@ -1,19 +1,41 @@
+.register-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 90vh;
+}
+
+.image-container {
+  width: 50%;
+  height: 90vh;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #a4def9;
+}
+
 .register-container {
+  height: 100%;
+  width: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  background-color: #f0f0f0;
+  border-right: 1px solid #cccccc;
+  background: #cebae1;
 }
 
 .register-form {
+  width: 300px;
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(1.7px);
+  -webkit-backdrop-filter: blur(1.7px);
+  border: 1px solid rgba(255, 255, 255, 0.21);
   display: flex;
   flex-direction: column;
   padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  background-color: #fff;
-  width: 300px;
 }
 
 .register-form label {
@@ -32,18 +54,33 @@
   padding: 10px 20px;
   border: none;
   border-radius: 3px;
-  background-color: #007bff;
-  color: #fff;
+  background: #97f9f9;
+  color: #000000;
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
+  transition: all 0.5s ease-in-out;
 }
 
 .register-form button:hover {
-  background-color: #0069d9;
+  background-color: #cebae1;
+  border: 0.5px solid rgb(247, 247, 247);
+  color: #ffffff;
 }
 
 .error-container {
   color: red;
   font-weight: bold;
   margin-top: 10px;
+}
+@media screen and (max-width: 768px) {
+  .register-page {
+    flex-direction: column;
+  }
+  .register-container {
+    border-right: none;
+    border-bottom: 1px solid #cccccc;
+    width: 100%;
+  }
+  .image-container {
+    width: 100%;
+  }
 }

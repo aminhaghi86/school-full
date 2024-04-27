@@ -1,39 +1,71 @@
 /* .event-accepted {
     background-color: #0443ef; /* Green for accepted events */
-  /* }
+/* }
    
   .event-denied {
     background-color: #ffcdd2; /* Red for denied events */
-  /* }  */
-  
-  .event-pending {
-    background-color: #f45804; /* Yellow for pending events */
-  }
+/* }  */
 
-  .accept-button {
-    background-color: #188cb9; /* Green */
-    color: white;
-    padding: .5rem 1rem;
-    border: none;
-    border-radius: .25rem;
-    /* Add other styling as needed */
+/*  */
+
+.calendar-page {
+  display: grid;
+  grid-template-columns: 10% auto;
+}
+@media screen and (max-width: 968px) {
+  .calendar-page {
+    grid-template-columns: 20% auto;
   }
-  .close-button{
-    background-color: #e0a81a; /* Green */
-    color: white;
-    padding: .5rem 1rem;
-    border: none;
-    border-radius: .25rem;
-    margin-left: .25rem;
+}
+@media screen and (max-width: 768px) {
+  .calendar-page {
+    grid-template-columns: 20% auto;
   }
-  
-  .deny-button {
-    background-color: #f44336; /* Red */
-    color: white;
-    /* Add other styling as needed */
-  }
-  /*  */
-  /* Modal container */
+}
+/*  */
+.control-container {
+  border-right: 1px solid #cccccc;
+  background: #a4def9;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/*  */
+
+.calendar-container {
+  background: #e5d4ce;
+}
+
+/*  */
+.event-pending {
+  background-color: #f45804; /* Yellow for pending events */
+}
+
+.accept-button {
+  background-color: #188cb9; /* Green */
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  /* Add other styling as needed */
+}
+.close-button {
+  background-color: #e0a81a; /* Green */
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  margin-left: 0.25rem;
+}
+
+.deny-button {
+  background-color: #f44336; /* Red */
+  color: white;
+  /* Add other styling as needed */
+}
+/*  */
+/* Modal container */
 .modal-container {
   width: 400px; /* Adjust width as needed */
   padding: 20px;
@@ -93,4 +125,3 @@
 }
 
 /* Status */
-

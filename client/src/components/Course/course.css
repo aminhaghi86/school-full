@@ -1,0 +1,18 @@
+.course-container {
+  border-top: 2px solid #cccccc;
+  border-bottom: 2px solid #cccccc;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 5px; 
+  }
+  
+  .course-label {
+    display: flex;
+    align-items: center; 
+  }
+  
+  input[type="radio"] {
+    margin-right: 5px; 
+  }
+  

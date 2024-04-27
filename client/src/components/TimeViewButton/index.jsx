@@ -1,16 +1,20 @@
-// ViewButtons.js
 import React from 'react';
-
+import './viewbutton.css'
 const TimeViewButtons = ({ changeView }) => {
+  const handleSelectChange = (event) => {
+    changeView(event.target.value);
+  };
+
   return (
-    <div>
-      <button onClick={() => changeView("today")}>Today</button>
-      <button onClick={() => changeView("timeGridWeek")}>Week</button>
-      <button onClick={() => changeView("dayGridMonth")}>Month</button>
-      <button onClick={() => changeView("multiMonthYear")}>
-        Multi-Month
-      </button>
-      <button onClick={() => changeView("listMonth")}>List</button>
+    <div className='time-view-button'>
+      <label htmlFor="viewSelector">Filter by Date:</label>
+      <select id="viewSelector" onChange={handleSelectChange}>
+        <option value="today">Today</option>
+        <option value="timeGridWeek">Week</option>
+        <option value="dayGridMonth">Month</option>
+        <option value="multiMonthYear">Multi-Month</option>
+        <option value="listMonth">List</option>
+      </select>
     </div>
   );
 };

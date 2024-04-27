@@ -4,6 +4,8 @@
 	width: 100%;
 	height: 10vh;
 	border-bottom: 1px solid #cccccc;
+	/* background-color: #C1E0F7; */
+	background: #97F9F9;
 }
 
 .header-container a {
@@ -26,19 +28,17 @@
 }
 .navbar-container a,
 .navbar-container-logout button {
-	background-color: #000000;
+	background-color: #000;
 	padding: 4px 8px;
 	font-weight: 800;
 	transition: all 0.5s ease-in-out;
 	border: none;
+	border-radius: .5rem;
 	padding: 8px 16px;
-	border-radius: 0.5rem;
-	border: 2px solid #000000;
-	color: white;
+	color: #fff;
 	margin-right: 1rem;
 }
 .navbar-container a:hover,
 .navbar-container-logout button:hover {
 	background-color: #00000010;
-	border: 2px #f57071 solid;
 }

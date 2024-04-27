@@ -18,7 +18,6 @@ import EventDetailsModal from "../EventDetailsModal";
 import CalendarComponent from "../CalendarComponent";
 import { isEventOverlap } from "../../utils/overlapEvent";
 const Calendar = () => {
-
   const [selectedEvent, setSelectedEvent] = useState({
     id: null,
     start: null,
@@ -55,8 +54,6 @@ const Calendar = () => {
       getEvents();
     }
   }, [user, filterCourse]);
-
-
 
   useEffect(() => {
     if (user) {
@@ -388,39 +385,43 @@ const Calendar = () => {
   };
 
   return (
-    <div style={{ margin: "5rem 0" }}>
-      <ToastContainer position="bottom-left" autoClose={500} />
-
-      <Course
-        filterCourse={filterCourse}
-        handleCourseChange={handleCourseChange}
-      />
-
-      <TimeViewButtons changeView={changeView} />
-      <CalendarComponent
-        calendarRef={calendarRef}
-        handleSelect={handleSelect}
-        handleEditEvent={handleEditEvent}
-        handleEventDrop={handleEventDrop}
-        handleEventResize={handleEventResize}
-        events={events}
-        calendarView={calendarView}
-      />
-      {showModal && (
-        <EventDetailsModal
-          selectedEvent={selectedEvent}
-          handleInputChange={handleInputChange}
-          handleSaveEvent={handleSaveEvent}
-          onClose={() => setShowModal(false)}
-          onAccept={handleAcceptEvent}
-          onDelete={handleDeleteClick}
-          hasUnsavedChanges={hasUnsavedChanges}
+    <div className="calendar-page">
+      
+      <div className="control-container">
+        <Course
+          filterCourse={filterCourse}
+          handleCourseChange={handleCourseChange}
         />
-      )}
 
-      {deleteMode && (
-        <DeleteEventModal eventId={selectedEvent.id} onClose={onClose} />
-      )}
+        <TimeViewButtons changeView={changeView} />
+      </div>
+      <div className="calendar-container">
+      <ToastContainer position="bottom-left" autoClose={500} />
+        <CalendarComponent
+          calendarRef={calendarRef}
+          handleSelect={handleSelect}
+          handleEditEvent={handleEditEvent}
+          handleEventDrop={handleEventDrop}
+          handleEventResize={handleEventResize}
+          events={events}
+          calendarView={calendarView}
+        />
+        {showModal && (
+          <EventDetailsModal
+            selectedEvent={selectedEvent}
+            handleInputChange={handleInputChange}
+            handleSaveEvent={handleSaveEvent}
+            onClose={() => setShowModal(false)}
+            onAccept={handleAcceptEvent}
+            onDelete={handleDeleteClick}
+            hasUnsavedChanges={hasUnsavedChanges}
+          />
+        )}
+
+        {deleteMode && (
+          <DeleteEventModal eventId={selectedEvent.id} onClose={onClose} />
+        )}
+      </div>
     </div>
   );
 };

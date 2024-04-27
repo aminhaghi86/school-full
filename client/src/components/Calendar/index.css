@@ -1,3 +1,9 @@
+
+
+
+
+
+
 /* .event-accepted {
     background-color: #0443ef; /* Green for accepted events */
   /* }
@@ -6,6 +12,27 @@
     background-color: #ffcdd2; /* Red for denied events */
   /* }  */
   
+
+/*  */
+
+.calendar-page{
+  display: grid;
+  grid-template-columns: 10% auto;
+}
+
+/*  */
+.control-container{
+  border-right: 1px solid #cccccc;
+  background: #A4DEF9;
+}
+
+/*  */
+
+.calendar-container{
+  background: #E5D4CE;
+}
+
+/*  */
   .event-pending {
     background-color: #f45804; /* Yellow for pending events */
   }

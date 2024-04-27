@@ -4,3 +4,8 @@
     padding: 0;
     box-sizing: border-box;
 }
+
+:root {
+    --fc-border-color: black;
+    --fc-daygrid-event-dot-width: 5px;
+  }

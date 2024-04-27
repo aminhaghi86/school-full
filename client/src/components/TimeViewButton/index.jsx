@@ -9,8 +9,8 @@ const TimeViewButtons = ({ changeView }) => {
     <div className='time-view-button'>
       <label htmlFor="viewSelector">Filter by Date:</label>
       <select id="viewSelector" onChange={handleSelectChange}>
-        <option value="today">Today</option>
         <option value="timeGridWeek">Week</option>
+        <option value="today">Today</option>
         <option value="dayGridMonth">Month</option>
         <option value="multiMonthYear">Multi-Month</option>
         <option value="listMonth">List</option>

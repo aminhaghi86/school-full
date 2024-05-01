@@ -18,7 +18,7 @@ const CalendarComponent = ({
 }) => {
   return (
     <FullCalendar
-      height="90vh"
+      height="100vh"
       width="100%"
       slotMinTime="08:00:00"
       slotMaxTime="19:00:00"

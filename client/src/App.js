@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./page/Login";
 import Register from "./page/Register";
 import Home from "./page/Home";
-import Navbar from "./components/Navbar";
+
 import { useAuthContext } from "./hooks/useAuthContext";
 import "./App.css";
 function App() {
@@ -11,7 +11,6 @@ function App() {
 		<>
 			<BrowserRouter>
 				<div className="app">
-					<Navbar />
 					<Routes>
 						<Route
 							path="/"

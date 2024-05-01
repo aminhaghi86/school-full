@@ -17,6 +17,7 @@ import TimeViewButtons from "../TimeViewButton";
 import EventDetailsModal from "../EventDetailsModal";
 import CalendarComponent from "../CalendarComponent";
 import { isEventOverlap } from "../../utils/overlapEvent";
+import Profile from "../Profile";
 const Calendar = () => {
   const [selectedEvent, setSelectedEvent] = useState({
     id: null,
@@ -386,18 +387,16 @@ const Calendar = () => {
 
   return (
     <div className="calendar-page">
-      
       <div className="control-container">
-      <TimeViewButtons changeView={changeView} />
+        <TimeViewButtons changeView={changeView} />
         <Course
           filterCourse={filterCourse}
           handleCourseChange={handleCourseChange}
         />
-
-       
+        <Profile />
       </div>
       <div className="calendar-container">
-      <ToastContainer position="bottom-left" autoClose={500} />
+        <ToastContainer position="bottom-left" autoClose={500} />
         <CalendarComponent
           calendarRef={calendarRef}
           handleSelect={handleSelect}

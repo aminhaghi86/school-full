@@ -5,6 +5,10 @@ Real-time updates were achieved using Socket.IO, ensuring synchronized event cha
 The app's dynamic modal for event details was implemented for enhanced user interaction. 
 Additionally, authentication context was utilized to manage user-specific data and permissions effectively.
 ## Demo
+<img width="1512" alt="329232042-9dd789b8-df1b-4c4d-b843-d3082d1722c3" src="https://github.com/aminhaghi86/school-full/assets/90243818/25fe67ad-0f1f-4cba-ab69-7e9dc135ba43">
+
+<img width="1512" alt="329232066-c077643f-b6a1-4614-a22d-83f9d5e0c3ed" src="https://github.com/aminhaghi86/school-full/assets/90243818/f35be092-5a8f-4f37-85c7-6783e9347d1e">
+
 <img width="1512" alt="Screenshot 2024-05-09 at 13 39 55" src="https://github.com/aminhaghi86/school-full/assets/90243818/9dd789b8-df1b-4c4d-b843-d3082d1722c3">
 <img width="1512" alt="Screenshot 2024-05-09 at 13 40 24" src="https://github.com/aminhaghi86/school-full/assets/90243818/c077643f-b6a1-4614-a22d-83f9d5e0c3ed">
 
